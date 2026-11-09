@@ -1,12 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-
-const url = import.meta.env.VITE_SUPABASE_URL
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+import { isSupabaseConfigured, supabaseAnonKey, supabaseUrl } from './config.ts'
 
 /**
- * Null until VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY are provided, so the
- * scaffold runs and tests pass before a Supabase project exists (Phase 3).
+ * Null until the project is configured, so the app renders without Supabase.
+ * Import from ./config.ts instead if you only need the URL, the anon key or the
+ * configured flag — importing this module loads the SDK.
  */
-export const supabase: SupabaseClient | null = url && anonKey ? createClient(url, anonKey) : null
-
-export const isSupabaseConfigured = Boolean(url && anonKey)
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null
