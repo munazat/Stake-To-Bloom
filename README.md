@@ -17,9 +17,15 @@ interprets them and only `settle()` plans a payout, guarded by strict invariants
 
 ## Status
 
-**Phase 1 — monorepo scaffold.** This is an in-progress build for the
+**Phases 1–4 landed.** This is an in-progress build for the
 [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). See the phase list
 below; the README grows as each phase lands.
+
+What works today: the shared money engine and rule schemas (`packages/core`), the
+Postgres schema with RLS, triggers and compare-and-set status transitions, and the
+three-step pact wizard that locks a Rule Contract. Creating a pact hashes the rule
+server-side and stores it frozen — the database then rejects any later edit to the
+rule, the hash or the stake. The 2.5D garden is next.
 
 ## Stack (all free tier)
 
@@ -32,7 +38,7 @@ below; the README grows as each phase lands.
 | Validation | zod (shared between web, core, and functions) |
 | AI | Google Gemini (free tier) via a model chain |
 | Payments | PayPal REST (Sandbox): Orders v2, Webhooks, Payouts, Refunds |
-| Tests | Vitest + fast-check (core), Deno test (functions), Playwright (E2E smoke) |
+| Tests | Vitest + fast-check (core), Testing Library (web), pgTAP (DB invariants), `deno check` (functions); Playwright planned |
 | Hosting | Cloudflare Pages (`*.pages.dev`), static SPA |
 
 ## Repository layout
@@ -40,13 +46,21 @@ below; the README grows as each phase lands.
 ```
 bloomstake/
   apps/web/            Vite + React SPA (static; public/_redirects for SPA routing)
+    src/lib/           config.ts (env, no deps), supabase.ts (client),
+                       session.ts (anonymous guest session), api.ts (typed calls)
+    src/routes/        Landing.tsx, PactNew.tsx (3-step wizard)
+    tests/             Vitest + Testing Library
   packages/core/       pure TypeScript: rules.ts (settle), gate.ts, schemas.ts,
-                       money.ts, dates.ts  (zod only, no I/O)
+                       templates.ts, hash.ts, money.ts, dates.ts  (zod only, no I/O)
   supabase/
     migrations/        numbered .sql (schema, RLS, functions, triggers, storage)
-    functions/         Deno Edge Functions + _shared/ (paypal, gemini, guard, core copy)
-  scripts/             sync-core.mjs, paypal-smoke.mjs, make-attack-corpus.html
-  .github/workflows/   ci.yml, keepalive.yml
+    tests/             pgTAP acceptance tests (RLS, transitions, freeze, ledger)
+    functions/         Deno Edge Functions
+      pact-create/     wizard choices -> frozen RuleSpec + rule_hash
+      _shared/         http.ts, auth.ts, cors.ts, core/ (synced copy of packages/core)
+                       planned: paypal.ts, gemini.ts, guard.ts, prompt.ts
+  scripts/             sync-core.mjs, check-functions.mjs
+  .github/workflows/   ci.yml  (planned: keepalive.yml)
 ```
 
 > **Edge Function bundling pitfall:** functions can only bundle files under
@@ -60,8 +74,25 @@ bloomstake/
 npm install
 npm run dev          # start the web SPA (http://localhost:5173)
 npm run test         # run unit/property tests across workspaces
-npm run typecheck    # tsc --noEmit across workspaces
+npm run typecheck    # tsc --noEmit across the Node workspaces
 npm run build        # production build of the web SPA
+
+npm run sync-core    # re-copy packages/core into supabase/functions/_shared/core
+npm run check:functions   # deno check the Edge Functions (needs Deno 2 on PATH)
+```
+
+The Edge Functions run under Deno, so `npm run typecheck` does not cover them —
+they use `npm:` specifiers and `.ts`-suffixed relative imports. `check:functions`
+needs [Deno](https://deno.land) installed, or `DENO_BIN` pointed at a binary; it
+fails loudly if Deno is missing rather than silently passing.
+
+For the full local stack (Supabase CLI + Docker):
+
+```bash
+supabase start       # Postgres, auth, storage, Kong API on :54321
+supabase db reset    # re-apply every migration from scratch
+supabase test db     # pgTAP acceptance tests (RLS, transitions, freeze, ledger)
+supabase functions serve   # Edge Functions with stdout logs
 ```
 
 Copy `.env.example` to a local `.env` (never committed) for the web build vars.
@@ -69,16 +100,21 @@ Edge Function secrets are set with `supabase secrets set` — never in git.
 
 ## Build phases
 
-1. **Monorepo scaffold** ← current
-2. `packages/core` money engine (`settle`, `money`, `dates`, `schemas`, property tests)
-3. Supabase schema, RLS, migrations, triggers
-4. Pact creation flow + Rule Contract (locked `rule_hash`)
-5. Living 2.5D garden (React Three Fiber) + SVG fallback
+1. ✅ **Monorepo scaffold**
+2. ✅ `packages/core` money engine (`settle`, `money`, `dates`, `schemas`, property tests)
+3. ✅ Supabase schema, RLS, migrations, triggers
+4. ✅ Pact creation flow + Rule Contract (locked `rule_hash`)
+5. **Living 2.5D garden (React Three Fiber) + SVG fallback** ← current
 6. AI proof referee (`gemini`, `gate`, injection defence, sample-proof generator)
 7. PayPal money-IN (Orders v2 + webhooks + audit feed)
 8. PayPal money-OUT (Payouts, settlement guard, refunds, receipt)
 9. Judge demo mode + ops hardening (demo-advance, cron, keep-alive, kill switches)
 10. Deploy + docs + video + Devpost submission
+
+> **Phase 4 scope note:** the wizard creates pacts from the four built-in goal
+> templates. A free-text *custom* goal needs the AI drafter from Phase 6 to turn
+> prose into checkable rules, so that tile is shown as unavailable rather than
+> half-wired — it is sequencing, not a dropped feature.
 
 ## Disclosures
 
