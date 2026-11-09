@@ -5,6 +5,11 @@ project_id = "bloomstake"
 [api]
 enabled = true
 
+# Guests play in an anonymous session (blueprint §5, §9); no credentials needed.
+[auth]
+enable_signup = true
+enable_anonymous_sign_ins = true
+
 # PayPal cannot send a user JWT, so the webhook function verifies the PayPal
 # transmission signature instead. All other functions keep JWT verification on.
 [functions.paypal-webhook]
