@@ -1,0 +1,11 @@
+# Supabase project configuration for BloomStake.
+# Local dev: `supabase start` (Docker) then `supabase functions serve`.
+project_id = "bloomstake"
+
+[api]
+enabled = true
+
+# PayPal cannot send a user JWT, so the webhook function verifies the PayPal
+# transmission signature instead. All other functions keep JWT verification on.
+[functions.paypal-webhook]
+verify_jwt = false
