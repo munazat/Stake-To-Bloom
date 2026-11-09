@@ -10,7 +10,8 @@ enabled = true
 enable_signup = true
 enable_anonymous_sign_ins = true
 
-# PayPal cannot send a user JWT, so the webhook function verifies the PayPal
-# transmission signature instead. All other functions keep JWT verification on.
-[functions.paypal-webhook]
-verify_jwt = false
+# Writes pacts, so it must only accept a token GoTrue has validated. Stated
+# explicitly rather than left to the default: a future CLI default change should
+# not silently open a money-adjacent endpoint.
+[functions.pact-create]
+verify_jwt = true
