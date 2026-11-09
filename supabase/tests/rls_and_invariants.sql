@@ -12,10 +12,12 @@
 begin;
 select no_plan();
 
--- Two throwaway users; handle_new_user auto-creates their profiles.
-insert into auth.users (id, created_at, updated_at) values
-  ('11111111-1111-1111-1111-111111111111', now(), now()),
-  ('22222222-2222-2222-2222-222222222222', now(), now());
+-- Three throwaway users; handle_new_user auto-creates their profiles. The third
+-- is anonymous, which is how every guest arrives.
+insert into auth.users (id, created_at, updated_at, is_anonymous) values
+  ('11111111-1111-1111-1111-111111111111', now(), now(), false),
+  ('22222222-2222-2222-2222-222222222222', now(), now(), false),
+  ('33333333-3333-3333-3333-333333333333', now(), now(), true);
 
 select has_table('public', 'pacts', 'pacts table exists');
 
@@ -23,6 +25,19 @@ select is(
   (select count(*) from public.profiles where user_id = '11111111-1111-1111-1111-111111111111'),
   1::bigint,
   'profile auto-created for user A on sign-in'
+);
+
+-- A guest has no email, so it can never be a PayPal payout recipient. Settlement
+-- depends on this flag being right.
+select is(
+  (select is_guest from public.profiles where user_id = '11111111-1111-1111-1111-111111111111'),
+  false,
+  'a normal sign-in is not flagged as a guest'
+);
+select is(
+  (select is_guest from public.profiles where user_id = '33333333-3333-3333-3333-333333333333'),
+  true,
+  'an anonymous sign-in is flagged as a guest'
 );
 
 -- Privileged setup (superuser bypasses RLS): a pact owned by user A, awaiting stake.
