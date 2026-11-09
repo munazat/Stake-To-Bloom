@@ -13,6 +13,11 @@ build/
 
 # Supabase
 .supabase/
+supabase/.temp/
+supabase/.branches/
+# Workspace-local tool binaries (Supabase CLI, ~62 MB). Not a devDependency on
+# purpose: keeping it out of package.json means CI's `npm ci` never downloads it.
+.tools/
 
 # Test / coverage
 coverage/
