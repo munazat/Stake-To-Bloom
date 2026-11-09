@@ -1,4 +1,5 @@
-import { isSupabaseConfigured } from '../lib/supabase.ts'
+import { Link } from 'react-router-dom'
+import { isSupabaseConfigured } from '../lib/config.ts'
 
 export function SandboxBanner() {
   return (
@@ -37,16 +38,23 @@ export default function Landing() {
         </p>
 
         <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-          <span className="rounded-full bg-emerald-600 px-5 py-2 font-semibold text-white shadow-sm">
-            Try Demo
-          </span>
-          <span className="rounded-full border border-slate-300 px-5 py-2 font-medium text-slate-600">
+          <Link
+            to="/pact/new"
+            className="rounded-full bg-emerald-600 px-5 py-2 font-semibold text-white shadow-sm hover:bg-emerald-700"
+          >
             Create a Pact
+          </Link>
+          <span
+            aria-disabled="true"
+            title="Guided demo mode — a funded pact with simulated pool members — is not wired up yet."
+            className="cursor-not-allowed rounded-full border border-slate-300 px-5 py-2 font-medium text-slate-400"
+          >
+            Try Demo
           </span>
         </div>
 
         <p className="mt-6 text-xs uppercase tracking-wide text-slate-400">
-          Phase 1 scaffold · {isSupabaseConfigured ? 'Supabase connected' : 'Supabase not configured yet'}
+          {isSupabaseConfigured ? 'Supabase connected' : 'Supabase not configured yet'}
         </p>
       </main>
 
