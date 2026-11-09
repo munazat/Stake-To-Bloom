@@ -41,8 +41,11 @@ export const RuleCheckSchema = z
   })
 export type RuleCheck = z.infer<typeof RuleCheckSchema>
 
-/** Per-goal numeric bounds (blueprint §7.2). */
-const NUMERIC_BOUNDS: Partial<Record<GoalType, [number, number]>> = {
+/**
+ * Per-goal numeric bounds (blueprint §7.2). Exported so the wizard can set its
+ * input min/max from the same table RuleSpecSchema validates against.
+ */
+export const NUMERIC_BOUNDS: Partial<Record<GoalType, [number, number]>> = {
   steps: [1_000, 50_000],
   water: [500, 6_000],
   workout: [10, 240],
@@ -125,6 +128,18 @@ export function normalizeBox(box: ObservationCheck['box_2d']): [number, number, 
   if (ymax < ymin || xmax < xmin) return null
   return clamped
 }
+
+// ---------------------------------------------------------------------------
+// Pact limits — mirror the CHECK constraints on public.pacts so the wizard and
+// the server validate against the same numbers the database will enforce.
+// ---------------------------------------------------------------------------
+
+export const STAKE_CENTS_MIN = 500 // $5
+export const STAKE_CENTS_MAX = 5_000 // $50
+export const PACT_DAYS = 7
+
+export const StakeCentsSchema = z.number().int().min(STAKE_CENTS_MIN).max(STAKE_CENTS_MAX)
+export type StakeCents = z.infer<typeof StakeCentsSchema>
 
 // ---------------------------------------------------------------------------
 // Verdicts
