@@ -24,7 +24,9 @@ jobs:
           cache: npm
 
       - name: Setup Deno
-        uses: denoland/setup-deno@v2
+        # Pinned to a full tag: this action publishes no floating `v2` major tag,
+        # so `@v2` fails to resolve and GitHub rejects the whole workflow file.
+        uses: denoland/setup-deno@v2.0.5
         with:
           deno-version: 2.x
 
