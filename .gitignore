@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment — only .env.example is tracked
+.env
+.env.*
+!.env.example
+
+# Supabase
+.supabase/
+
+# Test / coverage
+coverage/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+
+# Local logs
+*.log
+npm-debug.log*

@@ -1,0 +1,13 @@
+# gitleaks configuration for BloomStake.
+# Extends the built-in ruleset and allowlists known non-secret noise.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for BloomStake"
+paths = [
+  '''package-lock\.json''',
+  '''pnpm-lock\.yaml''',
+  '''deno\.lock''',
+  '''.*\.env\.example''',
+]
