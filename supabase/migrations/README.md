@@ -19,4 +19,17 @@ Conventions:
 - Illegal pact state transitions and post-funding edits to `stake_cents`,
   `rule_spec`, `rule_hash`, or `currency` are rejected by DB triggers, not just app code.
 
-These files are authored in **Phase 3**.
+These files are implemented and validated against Postgres 16.
+
+Local workflow:
+
+```bash
+supabase start        # boot the local stack (Docker)
+supabase db reset     # apply migrations/ in order, then seed.sql
+supabase test db      # run the pgTAP tests in supabase/tests/
+```
+
+`supabase/tests/rls_and_invariants.sql` is the acceptance suite for these
+migrations: RLS cross-user isolation, the `transition_pact` compare-and-set
+(race) guarantee, the freeze-after-funding and append-only-ledger triggers,
+the atomic AI-usage counters, and the private `proofs` bucket.
