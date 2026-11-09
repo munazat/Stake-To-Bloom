@@ -12,6 +12,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Gitleaks scans the pushed commit range; a shallow clone (the default)
+          # hides the range's base commit and fails with "unknown revision".
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
