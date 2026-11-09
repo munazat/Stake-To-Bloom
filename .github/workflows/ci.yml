@@ -23,11 +23,22 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: 2.x
+
       - name: Install
         run: npm ci
 
       - name: Typecheck (all workspaces)
         run: npm run typecheck --workspaces --if-present
+
+      # The Edge Functions run under Deno, so tsc above never sees them: they use
+      # npm: specifiers and .ts-suffixed relative imports. This is the step that
+      # would have caught a missing await before it reached the database.
+      - name: Typecheck (edge functions)
+        run: npm run check:functions
 
       - name: Test (all workspaces)
         run: npm run test --workspaces --if-present

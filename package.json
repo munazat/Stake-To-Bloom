@@ -12,6 +12,7 @@
     "build": "npm run build --workspace @bloomstake/web",
     "preview": "npm run preview --workspace @bloomstake/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:functions": "node scripts/check-functions.mjs",
     "test": "npm run test --workspaces --if-present",
     "sync-core": "node scripts/sync-core.mjs",
     "format": "prettier --write ."
