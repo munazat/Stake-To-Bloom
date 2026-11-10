@@ -136,6 +136,30 @@ select is(public.bump_ai_usage('11111111-1111-1111-1111-111111111111', date '202
 select is((select count from public.ai_usage_global where day = date '2026-11-09'), 2, 'global AI counter tracks the total');
 
 -- ---------------------------------------------------------------------------
+-- Realtime: the garden's tables must actually be published. A subscription to an
+-- unpublished table connects and then delivers nothing, with no error to notice.
+-- ---------------------------------------------------------------------------
+select is(
+  (select count(*) from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'pacts'),
+  1::bigint,
+  'pacts is published, so funding a pact plants the seed without a refresh'
+);
+select is(
+  (select count(*) from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'pact_days'),
+  1::bigint,
+  'pact_days is published, so a verified day grows the plant live'
+);
+select is(
+  (select count(*) from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public'
+      and tablename in ('ledger_entries', 'settlements', 'paypal_events')),
+  0::bigint,
+  'money tables are not broadcast; the client reads them over REST'
+);
+
+-- ---------------------------------------------------------------------------
 -- storage: private proofs bucket.
 -- ---------------------------------------------------------------------------
 select is((select public from storage.buckets where id = 'proofs'), false, 'proofs bucket is private');
