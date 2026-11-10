@@ -22,6 +22,9 @@ supabase/.branches/
 # Test / coverage
 coverage/
 
+# Local verification scratch (CDP scripts, headless profiles, screenshots)
+.scratch/
+
 # Editor / OS
 .DS_Store
 Thumbs.db
