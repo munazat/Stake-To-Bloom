@@ -8,7 +8,9 @@
  * Invariants upheld here: money is integer cents (money.ts); day boundaries are
  * IANA-timezone/DST safe (dates.ts); the RuleSpec is freezable via a canonical hash
  * (hash.ts); settle() is pure and conserves every cent (rules.ts); gate() is the
- * only interpreter of untrusted AI output and never moves money (gate.ts).
+ * only interpreter of untrusted AI output and never moves money (gate.ts);
+ * vitality is server-owned and core only derives the visual stage from it
+ * (garden.ts).
  *
  * NOTE: relative imports inside this package carry explicit `.ts` extensions —
  * Deno requires it.
@@ -22,3 +24,4 @@ export * from './schemas.ts'
 export * from './templates.ts'
 export * from './rules.ts'
 export * from './gate.ts'
+export * from './garden.ts'
