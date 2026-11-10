@@ -17,15 +17,19 @@ interprets them and only `settle()` plans a payout, guarded by strict invariants
 
 ## Status
 
-**Phases 1–4 landed.** This is an in-progress build for the
+**Phases 1–5 landed.** This is an in-progress build for the
 [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). See the phase list
 below; the README grows as each phase lands.
 
 What works today: the shared money engine and rule schemas (`packages/core`), the
-Postgres schema with RLS, triggers and compare-and-set status transitions, and the
-three-step pact wizard that locks a Rule Contract. Creating a pact hashes the rule
-server-side and stores it frozen — the database then rejects any later edit to the
-rule, the hash or the stake. The 2.5D garden is next.
+Postgres schema with RLS, triggers and compare-and-set status transitions, the
+three-step pact wizard that locks a Rule Contract, and the living 2.5D garden at
+`/garden`. Creating a pact hashes the rule server-side and stores it frozen — the
+database then rejects any later edit to the rule, the hash or the stake. The
+garden reads vitality from the database (the server owns it, the client never
+recomputes it), renders a procedural plant in WebGL, falls back to an equivalent
+SVG when WebGL is unavailable or lost, and updates through Realtime without a
+reload. The AI proof referee is next.
 
 ## Stack (all free tier)
 
@@ -33,7 +37,7 @@ rule, the hash or the stake. The 2.5D garden is next.
 | --- | --- |
 | Language | TypeScript everywhere |
 | Frontend | Vite + React 19 + React Router + TanStack Query + Tailwind CSS v4 |
-| Garden | three + @react-three/fiber + drei (procedural, no external assets) + SVG fallback |
+| Garden | three + @react-three/fiber (procedural geometry, no external assets) + SVG fallback |
 | Backend | Supabase (Postgres + RLS, Auth, Storage, Realtime, Deno Edge Functions) |
 | Validation | zod (shared between web, core, and functions) |
 | AI | Google Gemini (free tier) via a model chain |
@@ -47,11 +51,16 @@ rule, the hash or the stake. The 2.5D garden is next.
 bloomstake/
   apps/web/            Vite + React SPA (static; public/_redirects for SPA routing)
     src/lib/           config.ts (env, no deps), supabase.ts (client),
-                       session.ts (anonymous guest session), api.ts (typed calls)
-    src/routes/        Landing.tsx, PactNew.tsx (3-step wizard)
+                       session.ts (anonymous guest session), api.ts (typed calls),
+                       garden.ts (plot query + Realtime subscription)
+    src/garden/        visuals.ts (one shared look model), capabilities.ts,
+                       Plant3D.tsx, Scene3D.tsx (lazy), PlantSVG.tsx (fallback),
+                       GardenPlot.tsx (chooses the renderer)
+    src/routes/        Landing.tsx, PactNew.tsx (3-step wizard), Garden.tsx
     tests/             Vitest + Testing Library
   packages/core/       pure TypeScript: rules.ts (settle), gate.ts, schemas.ts,
-                       templates.ts, hash.ts, money.ts, dates.ts  (zod only, no I/O)
+                       templates.ts, hash.ts, money.ts, dates.ts, garden.ts
+                       (vitality + stage)  (zod only, no I/O)
   supabase/
     migrations/        numbered .sql (schema, RLS, functions, triggers, storage)
     tests/             pgTAP acceptance tests (RLS, transitions, freeze, ledger)
@@ -104,8 +113,8 @@ Edge Function secrets are set with `supabase secrets set` — never in git.
 2. ✅ `packages/core` money engine (`settle`, `money`, `dates`, `schemas`, property tests)
 3. ✅ Supabase schema, RLS, migrations, triggers
 4. ✅ Pact creation flow + Rule Contract (locked `rule_hash`)
-5. **Living 2.5D garden (React Three Fiber) + SVG fallback** ← current
-6. AI proof referee (`gemini`, `gate`, injection defence, sample-proof generator)
+5. ✅ **Living 2.5D garden (React Three Fiber) + SVG fallback**
+6. AI proof referee (`gemini`, `gate`, injection defence, sample-proof generator) ← current
 7. PayPal money-IN (Orders v2 + webhooks + audit feed)
 8. PayPal money-OUT (Payouts, settlement guard, refunds, receipt)
 9. Judge demo mode + ops hardening (demo-advance, cron, keep-alive, kill switches)

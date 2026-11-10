@@ -233,10 +233,10 @@ export default function PactNew() {
             </div>
 
             <Link
-              to="/"
+              to="/garden"
               className="mt-6 inline-block rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
             >
-              Done
+              See it in your garden
             </Link>
           </section>
         ) : step === 0 ? (

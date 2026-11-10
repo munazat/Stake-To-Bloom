@@ -44,6 +44,12 @@ export default function Landing() {
           >
             Create a Pact
           </Link>
+          <Link
+            to="/garden"
+            className="rounded-full border border-emerald-600 px-5 py-2 font-semibold text-emerald-700 hover:bg-emerald-50"
+          >
+            View Garden
+          </Link>
           <span
             aria-disabled="true"
             title="Guided demo mode — a funded pact with simulated pool members — is not wired up yet."
