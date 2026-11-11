@@ -47,6 +47,7 @@ export interface WebhookDeps {
   loadPactByCapture(captureId: string): Promise<WebhookPact | null>
   /** ACTIVE -> NEEDS_REVIEW. 'skipped' when the pact is not in a state that allows it. */
   flagForReview(pactId: string): Promise<'moved' | 'skipped'>
+  reconcileSettlement?(eventType: string, resource: Record<string, unknown>): Promise<string | null>
 }
 
 async function readBoundedBody(request: Request): Promise<string> {
@@ -88,6 +89,7 @@ interface Resource {
   status?: unknown
   amount?: { value?: unknown }
   supplementary_data?: { related_ids?: { order_id?: unknown } }
+  payout_batch_id?: unknown
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
@@ -188,6 +190,20 @@ export async function handleWebhook(deps: WebhookDeps, request: Request): Promis
         (resourceId ? await deps.loadPactByCapture(resourceId) : null)
       pactId = pact?.id ?? null
       if (pact) detail.review = (await deps.flagForReview(pact.id)) === 'moved'
+      break
+    }
+
+    case 'PAYMENT.PAYOUTSBATCH.SUCCESS':
+    case 'PAYMENT.PAYOUTSBATCH.DENIED':
+    case 'PAYMENT.PAYOUTS-ITEM.SUCCEEDED':
+    case 'PAYMENT.PAYOUTS-ITEM.DENIED':
+    case 'PAYMENT.PAYOUTS-ITEM.UNCLAIMED':
+    case 'PAYMENT.PAYOUTS-ITEM.RETURNED':
+    case 'PAYMENT.PAYOUTS-ITEM.FAILED': {
+      pactId = deps.reconcileSettlement
+        ? await deps.reconcileSettlement(eventType, resource as Record<string, unknown>)
+        : null
+      detail.settlement = pactId ? 'updated' : 'not found'
       break
     }
 
