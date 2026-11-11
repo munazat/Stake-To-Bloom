@@ -45,6 +45,11 @@ jobs:
       - name: Test (all workspaces)
         run: npm run test --workspaces --if-present
 
+      # Retry policy of the model chain and the ordering of the proof pipeline.
+      # Network-free: the SDK runs against a stubbed fetch.
+      - name: Test (edge functions)
+        run: npm run test:functions
+
       - name: Build web SPA
         run: npm run build --workspace @bloomstake/web
 

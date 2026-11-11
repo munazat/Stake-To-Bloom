@@ -13,7 +13,13 @@
  * the one environment where it matters is worse than no check, because it reads
  * as a pass.
  *
- * Usage: node scripts/check-functions.mjs   (or: npm run check:functions)
+ * Usage: node scripts/check-functions.mjs          (or: npm run check:functions)
+ *        node scripts/check-functions.mjs --test   (or: npm run test:functions)
+ *
+ * `--test` runs the `*_test.ts` files with `deno test` instead. Tests get env
+ * access only (the SDK reads logging flags from the environment); no network,
+ * no file system, so a test that tries to reach a real API fails instead of
+ * quietly spending quota.
  */
 import { readdir } from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
@@ -49,9 +55,18 @@ if (files.length === 0) {
 }
 
 const deno = findDeno()
-const args = ['check', '--quiet', '--config', join(functionsDir, 'deno.json'), ...files]
+const testMode = process.argv.includes('--test')
+const testFiles = files.filter((f) => f.endsWith('_test.ts'))
+const config = ['--config', join(functionsDir, 'deno.json')]
+const args = testMode
+  ? ['test', '--allow-env', '--no-prompt', ...config, ...testFiles]
+  : ['check', '--quiet', ...config, ...files]
 
-console.log(`${deno} check — ${files.length} file(s) under supabase/functions`)
+if (testMode && testFiles.length === 0) {
+  console.error('no *_test.ts files found under supabase/functions')
+  process.exit(1)
+}
+console.log(`${deno} ${args[0]} — ${testMode ? testFiles.length : files.length} file(s) under supabase/functions`)
 const result = spawnSync(deno, args, { cwd: root, stdio: 'inherit' })
 
 if (result.error) {
@@ -64,4 +79,4 @@ if (result.error) {
 }
 
 if (result.status !== 0) process.exit(result.status ?? 1)
-console.log('edge functions typecheck clean')
+console.log(testMode ? 'edge function tests passed' : 'edge functions typecheck clean')
