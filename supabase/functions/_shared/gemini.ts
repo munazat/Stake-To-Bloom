@@ -124,15 +124,35 @@ function truncateRaw(text: string): unknown {
   }
 }
 
+export interface ChainDeps {
+  models: string[]
+  sleep?: (ms: number) => Promise<void>
+  now?: () => number
+}
+
+export interface ChainResult<T> {
+  value: T | null
+  raw: unknown
+  model: string | null
+  outcome: ExtractResult['outcome']
+  attempts: AttemptLog[]
+}
+
 /**
- * Ask the chain for an Observation. Never throws for model-side problems.
+ * Run one request through the model chain with the retry policy above. `call`
+ * performs a single generateContent; `parse` turns the model's JSON into a
+ * validated value, or null if it is unusable. Never throws for model-side problems.
  */
-export async function extractObservation(input: ExtractInput, deps: ExtractDeps): Promise<ExtractResult> {
+export async function runChain<T>(
+  deps: ChainDeps,
+  call: (model: string) => Promise<GenerateOutcome>,
+  parse: (raw: unknown) => T | null,
+): Promise<ChainResult<T>> {
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)))
   const now = deps.now ?? Date.now
   const attempts: AttemptLog[] = []
   if (deps.models.length === 0) {
-    return { observation: null, raw: null, model: null, outcome: 'not_configured', attempts }
+    return { value: null, raw: null, model: null, outcome: 'not_configured', attempts }
   }
 
   const started = now()
@@ -143,12 +163,12 @@ export async function extractObservation(input: ExtractInput, deps: ExtractDeps)
   for (const model of deps.models) {
     for (let t = 1; t <= TRIES_PER_MODEL; t++) {
       if (overBudget()) {
-        return { observation: null, raw: lastRaw, model: null, outcome: 'unavailable', attempts }
+        return { value: null, raw: lastRaw, model: null, outcome: 'unavailable', attempts }
       }
 
       let outcome: GenerateOutcome
       try {
-        outcome = await deps.generate(model, input)
+        outcome = await call(model)
       } catch (err) {
         const { c, status } = classify(err)
         if (c.kind === 'skip_model') {
@@ -173,27 +193,33 @@ export async function extractObservation(input: ExtractInput, deps: ExtractDeps)
       // image will be blocked again. UNCLEAR, and the user can re-upload.
       if (outcome.blockReason || outcome.candidateCount === 0) {
         attempts.push({ model, try: t, result: 'blocked' })
-        return { observation: null, raw: { blockReason: outcome.blockReason }, model, outcome: 'blocked', attempts }
+        return { value: null, raw: { blockReason: outcome.blockReason }, model, outcome: 'blocked', attempts }
       }
 
       const text = outcome.text ?? ''
       lastRaw = truncateRaw(text)
-      const observation = observationFromModel(lastRaw)
-      if (observation) {
+      const value = parse(lastRaw)
+      if (value) {
         attempts.push({ model, try: t, result: 'ok' })
-        return { observation, raw: lastRaw, model, outcome: 'ok', attempts }
+        return { value, raw: lastRaw, model, outcome: 'ok', attempts }
       }
 
       attempts.push({ model, try: t, result: 'invalid_output' })
       invalidOutputs++
       // Failure matrix: malformed JSON gets one retry, then UNCLEAR.
       if (invalidOutputs >= 2) {
-        return { observation: null, raw: lastRaw, model: null, outcome: 'invalid_output', attempts }
+        return { value: null, raw: lastRaw, model: null, outcome: 'invalid_output', attempts }
       }
     }
   }
 
-  return { observation: null, raw: lastRaw, model: null, outcome: 'unavailable', attempts }
+  return { value: null, raw: lastRaw, model: null, outcome: 'unavailable', attempts }
+}
+
+/** Ask the chain to read an image into an Observation. Never throws for model-side problems. */
+export async function extractObservation(input: ExtractInput, deps: ExtractDeps): Promise<ExtractResult> {
+  const r = await runChain(deps, (model) => deps.generate(model, input), observationFromModel)
+  return { observation: r.value, raw: r.raw, model: r.model, outcome: r.outcome, attempts: r.attempts }
 }
 
 /**
@@ -235,9 +261,50 @@ export function sdkGenerate(apiKey: string, fetchImpl?: typeof fetch): GenerateF
   }
 }
 
+export interface TextRequest {
+  system: string
+  prompt: string
+  schema: unknown
+}
+
+export type TextGenerateFn = (model: string, request: TextRequest) => Promise<GenerateOutcome>
+
+/** Text-only structured generation (rule drafting). Same settings, no image, no tools. */
+export function sdkTextGenerate(apiKey: string, fetchImpl?: typeof fetch): TextGenerateFn {
+  const ai = new GoogleGenAI({
+    apiKey,
+    httpOptions: { timeout: REQUEST_TIMEOUT_MS, ...(fetchImpl ? { fetch: fetchImpl } : {}) },
+  })
+  return async (model, request) => {
+    const thinkingConfig = thinkingConfigFor(model)
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ role: 'user', parts: [{ text: request.prompt }] }],
+      config: {
+        systemInstruction: request.system,
+        ...GENERATION_SETTINGS,
+        responseSchema: request.schema as Record<string, unknown>,
+        ...(thinkingConfig ? { thinkingConfig } : {}),
+      },
+    })
+    return {
+      text: response.text ?? null,
+      blockReason: response.promptFeedback?.blockReason ? String(response.promptFeedback.blockReason) : null,
+      candidateCount: response.candidates?.length ?? 0,
+    }
+  }
+}
+
 /** Wire the chain from the function environment. Missing key -> empty chain. */
 export function depsFromEnv(): ExtractDeps {
   const apiKey = Deno.env.get('GEMINI_API_KEY') ?? ''
   const models = apiKey ? parseModelChain(Deno.env.get('GEMINI_MODEL_CHAIN')) : []
   return { models, generate: sdkGenerate(apiKey) }
+}
+
+/** The same chain, for text-only calls. */
+export function textDepsFromEnv(): ChainDeps & { generate: TextGenerateFn } {
+  const apiKey = Deno.env.get('GEMINI_API_KEY') ?? ''
+  const models = apiKey ? parseModelChain(Deno.env.get('GEMINI_MODEL_CHAIN')) : []
+  return { models, generate: sdkTextGenerate(apiKey) }
 }
