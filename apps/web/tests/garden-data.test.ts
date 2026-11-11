@@ -13,6 +13,8 @@ function row(overrides: Partial<Parameters<typeof toPlot>[0]> = {}): Parameters<
     days: 7,
     funded_at: '2026-11-09T12:00:00Z',
     is_demo: false,
+    is_simulated: false,
+    demo_role: null,
     pact_days: [],
     ...overrides,
   }
@@ -95,12 +97,18 @@ describe('toPlot', () => {
 
   it('lets the settled status override the day rows', () => {
     const days = [{ day_index: 0, status: 'MISSED' as const }]
-    expect(toPlot(row({ status: 'SETTLED_FAIL', vitality: 1, pact_days: days })).stage).toBe('withered')
-    expect(toPlot(row({ status: 'SETTLED_PASS', vitality: 0.1, pact_days: days })).stage).toBe('bloom')
+    expect(toPlot(row({ status: 'SETTLED_FAIL', vitality: 1, pact_days: days })).stage).toBe(
+      'withered',
+    )
+    expect(toPlot(row({ status: 'SETTLED_PASS', vitality: 0.1, pact_days: days })).stage).toBe(
+      'bloom',
+    )
   })
 
   it('keeps an unfunded pact as a seed', () => {
-    expect(toPlot(row({ status: 'AWAITING_STAKE', funded_at: null, vitality: 0 })).stage).toBe('seed')
+    expect(toPlot(row({ status: 'AWAITING_STAKE', funded_at: null, vitality: 0 })).stage).toBe(
+      'seed',
+    )
   })
 
   it('passes the money and demo fields through untouched', () => {
@@ -112,6 +120,8 @@ describe('toPlot', () => {
   })
 
   it('never recomputes vitality — the server value is carried through as-is', () => {
-    expect(toPlot(row({ vitality: 0.33, pact_days: [{ day_index: 0, status: 'PASSED' }] })).vitality).toBe(0.33)
+    expect(
+      toPlot(row({ vitality: 0.33, pact_days: [{ day_index: 0, status: 'PASSED' }] })).vitality,
+    ).toBe(0.33)
   })
 })

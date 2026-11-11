@@ -19,6 +19,7 @@ export interface PactDay {
   dayIndex: number
   dateLocal: string
   status: DayStatus
+  demoSimulated: boolean
 }
 
 export interface ProofRecord {
@@ -45,6 +46,9 @@ export interface PactDetail {
   tz: string
   startsAt: string | null
   isDemo: boolean
+  isSimulated: boolean
+  demoRole: string | null
+  poolId: string | null
   ruleHash: string
   spec: RuleSpec
   paypalOrderId: string | null
@@ -72,12 +76,19 @@ interface PactRow {
   tz: string
   starts_at: string | null
   is_demo: boolean
+  is_simulated: boolean
+  demo_role: string | null
   pool_id: string | null
   rule_hash: string
   rule_spec: unknown
   paypal_order_id: string | null
   payer_email: string | null
-  pact_days: Array<{ day_index: number; date_local: string; status: DayStatus }> | null
+  pact_days: Array<{
+    day_index: number
+    date_local: string
+    status: DayStatus
+    demo_simulated: boolean
+  }> | null
 }
 
 interface ProofRow {
@@ -91,7 +102,7 @@ interface ProofRow {
 }
 
 const PACT_COLUMNS =
-  'id,title,status,vitality,stake_cents,currency,required_passes,days,tz,starts_at,is_demo,pool_id,rule_hash,rule_spec,paypal_order_id,payer_email,pact_days(day_index,date_local,status)'
+  'id,title,status,vitality,stake_cents,currency,required_passes,days,tz,starts_at,is_demo,is_simulated,demo_role,pool_id,rule_hash,rule_spec,paypal_order_id,payer_email,pact_days(day_index,date_local,status,demo_simulated)'
 
 export async function fetchPactDetail(id: string): Promise<PactDetail | null> {
   if (!supabase) return null
@@ -132,6 +143,9 @@ export async function fetchPactDetail(id: string): Promise<PactDetail | null> {
     tz: row.tz,
     startsAt: row.starts_at,
     isDemo: row.is_demo,
+    isSimulated: row.is_simulated,
+    demoRole: row.demo_role,
+    poolId: row.pool_id,
     ruleHash: row.rule_hash,
     spec: RuleSpecSchema.parse(row.rule_spec),
     paypalOrderId: row.paypal_order_id,
@@ -146,7 +160,12 @@ export async function fetchPactDetail(id: string): Promise<PactDetail | null> {
         }
       : null,
     dayRows: (row.pact_days ?? [])
-      .map((d) => ({ dayIndex: d.day_index, dateLocal: d.date_local, status: d.status }))
+      .map((d) => ({
+        dayIndex: d.day_index,
+        dateLocal: d.date_local,
+        status: d.status,
+        demoSimulated: d.demo_simulated,
+      }))
       .sort((a, b) => a.dayIndex - b.dayIndex),
     proofs: ((proofRows ?? []) as unknown as ProofRow[]).map((p) => ({
       id: p.id,

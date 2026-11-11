@@ -10,6 +10,9 @@ const PactNew = lazy(() => import('./routes/PactNew.tsx'))
 const Garden = lazy(() => import('./routes/Garden.tsx'))
 const PactDetail = lazy(() => import('./routes/PactDetail.tsx'))
 const Audit = lazy(() => import('./routes/Audit.tsx'))
+const Demo = lazy(() => import('./routes/Demo.tsx'))
+const About = lazy(() => import('./routes/About.tsx'))
+const Admin = lazy(() => import('./routes/Admin.tsx'))
 
 function Deferred({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -29,6 +32,30 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route
+        path="/demo"
+        element={
+          <Deferred label="Loading the guided demo…">
+            <Demo />
+          </Deferred>
+        }
+      />
+      <Route
+        path="/about"
+        element={
+          <Deferred label="Loading project information…">
+            <About />
+          </Deferred>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <Deferred label="Loading operations tools…">
+            <Admin />
+          </Deferred>
+        }
+      />
       <Route
         path="/pact/new"
         element={

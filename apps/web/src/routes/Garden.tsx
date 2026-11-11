@@ -113,7 +113,11 @@ export default function Garden() {
                     STATUS_LABELS[plot.status],
                     `${formatUsd(plot.stakeCents)} ${plot.currency}`,
                     `${plot.requiredPasses}/${plot.days} to pass`,
-                    plot.isDemo ? 'demo player' : null,
+                    plot.demoRole === 'OWNER'
+                      ? 'guided demo'
+                      : plot.isSimulated
+                        ? 'simulated demo player'
+                        : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}

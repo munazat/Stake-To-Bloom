@@ -50,13 +50,12 @@ export default function Landing() {
           >
             View Garden
           </Link>
-          <span
-            aria-disabled="true"
-            title="Guided demo mode — a funded pact with simulated pool members — is not wired up yet."
-            className="cursor-not-allowed rounded-full border border-slate-300 px-5 py-2 font-medium text-slate-400"
+          <Link
+            to="/demo"
+            className="rounded-full border border-emerald-600 px-5 py-2 font-semibold text-emerald-700 hover:bg-emerald-50"
           >
             Try Demo
-          </span>
+          </Link>
         </div>
 
         <p className="mt-6 text-xs uppercase tracking-wide text-slate-400">

@@ -127,6 +127,29 @@ export async function refundPact(pactId: string): Promise<void> {
   await post('refund-pact', { pact_id: pactId })
 }
 
+export interface DemoBootstrapResult {
+  demo: true
+  pactId: string
+  poolId: string
+  existing?: boolean
+}
+
+export async function startDemo(): Promise<DemoBootstrapResult> {
+  const payload = await post('demo-bootstrap', {})
+  if (!payload || typeof payload !== 'object' || !('pactId' in payload) || !('poolId' in payload))
+    throw new ApiError(502, { code: 'bad_response', message: 'Unexpected demo response.' })
+  return payload as DemoBootstrapResult
+}
+
+export async function advanceDemo(
+  poolId: string,
+): Promise<{ advancedDay: number; simulated: true }> {
+  const payload = await post('demo-advance', { pool_id: poolId })
+  if (!payload || typeof payload !== 'object' || !('advancedDay' in payload))
+    throw new ApiError(502, { code: 'bad_response', message: 'Unexpected demo response.' })
+  return payload as { advancedDay: number; simulated: true }
+}
+
 // ---------------------------------------------------------------------------
 // Proofs
 // ---------------------------------------------------------------------------

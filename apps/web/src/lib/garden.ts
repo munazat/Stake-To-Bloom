@@ -24,6 +24,8 @@ interface PlotRow {
   days: number
   funded_at: string | null
   is_demo: boolean
+  is_simulated: boolean
+  demo_role: string | null
   pact_days: Array<{ day_index: number; status: DayStatus }> | null
 }
 
@@ -37,12 +39,14 @@ export interface Plot {
   requiredPasses: number
   days: number
   isDemo: boolean
+  isSimulated: boolean
+  demoRole: string | null
   passedDays: number
   stage: GardenStage
 }
 
 const PLOT_COLUMNS =
-  'id,title,status,vitality,stake_cents,currency,required_passes,days,funded_at,is_demo,pact_days(day_index,status)'
+  'id,title,status,vitality,stake_cents,currency,required_passes,days,funded_at,is_demo,is_simulated,demo_role,pact_days(day_index,status)'
 
 export function toPlot(row: PlotRow): Plot {
   const days = row.pact_days ?? []
@@ -65,6 +69,8 @@ export function toPlot(row: PlotRow): Plot {
     requiredPasses: row.required_passes,
     days: row.days,
     isDemo: row.is_demo,
+    isSimulated: row.is_simulated,
+    demoRole: row.demo_role,
     passedDays,
     stage: gardenStage({
       vitality: row.vitality,
@@ -98,7 +104,11 @@ export async function subscribeToPlots(onChange: () => void): Promise<() => void
 
   const channel = supabase
     .channel(`garden:${session.user.id}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'pacts', filter: `user_id=eq.${session.user.id}` }, onChange)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'pacts', filter: `user_id=eq.${session.user.id}` },
+      onChange,
+    )
     .on('postgres_changes', { event: '*', schema: 'public', table: 'pact_days' }, onChange)
     .subscribe()
 

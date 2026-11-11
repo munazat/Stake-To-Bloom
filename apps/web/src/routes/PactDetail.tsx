@@ -11,7 +11,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatUsd, gardenStage } from '@bloomstake/core'
 import GardenPlot from '../garden/GardenPlot.tsx'
 import { SandboxBanner } from './Landing.tsx'
-import { ApiError, captureStakeOrder, refundPact, type ProofResult } from '../lib/api.ts'
+import {
+  advanceDemo,
+  ApiError,
+  captureStakeOrder,
+  refundPact,
+  type ProofResult,
+} from '../lib/api.ts'
 import { maskEmail } from '../lib/audit.ts'
 import StakeButton from './StakeButton.tsx'
 import { isSupabaseConfigured } from '../lib/config.ts'
@@ -126,7 +132,11 @@ function Timeline({ detail, today }: { detail: PactDetail; today: number | null 
           >
             <div className="font-semibold">Day {i + 1}</div>
             <div className="mt-0.5 text-[10px] uppercase tracking-wide">
-              {status === 'PENDING' && today === i ? 'Today' : status}
+              {day?.demoSimulated
+                ? 'Simulated'
+                : status === 'PENDING' && today === i
+                  ? 'Today'
+                  : status}
             </div>
           </li>
         )
@@ -208,6 +218,17 @@ export default function PactDetailRoute() {
     },
   })
 
+  const fastForward = useMutation({
+    mutationFn: () =>
+      detail?.poolId
+        ? advanceDemo(detail.poolId)
+        : Promise.reject(new Error('Demo pool is missing.')),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['pact', id] })
+      void queryClient.invalidateQueries({ queryKey: ['plots'] })
+    },
+  })
+
   async function submitSample(kind: SampleKind) {
     if (!detail || today === null) return
     const blob = await renderSample(sampleSpec(kind, sampleContextFor(detail, today)))
@@ -267,6 +288,7 @@ export default function PactDetailRoute() {
               {formatUsd(detail.stakeCents)} {detail.currency} · {detail.requiredPasses} of{' '}
               {detail.days} days to pass · {detail.status.replace(/_/g, ' ').toLowerCase()}
               {detail.isDemo ? ' · demo player' : ''}
+              {detail.isSimulated ? ' · simulated stake (no money moved)' : ''}
             </p>
 
             <div className="mt-4 max-w-xs">
@@ -280,6 +302,35 @@ export default function PactDetailRoute() {
             </div>
 
             <Timeline detail={detail} today={today} />
+
+            {detail.isDemo && detail.demoRole === 'OWNER' && detail.poolId && (
+              <section
+                className="mt-5 rounded-xl border border-violet-200 bg-violet-50 p-4"
+                aria-label="Guided demo controls"
+              >
+                <p className="text-sm font-semibold text-violet-950">
+                  Guided demo · simulated stakes only
+                </p>
+                <p className="mt-1 text-sm text-violet-900">
+                  Submit one real proof before the first fast-forward. Then Mia’s remaining days are
+                  simulated as passed; Omar’s and Zed’s are simulated as missed. No AI or money call
+                  is made for simulated days.
+                </p>
+                <button
+                  type="button"
+                  disabled={fastForward.isPending}
+                  onClick={() => fastForward.mutate()}
+                  className="mt-3 rounded-full border border-violet-700 px-4 py-2 text-sm font-semibold text-violet-900 disabled:opacity-50"
+                >
+                  {fastForward.isPending ? 'Advancing demo…' : 'Fast-forward one day'}
+                </button>
+                {fastForward.error && (
+                  <p role="alert" className="mt-2 text-sm text-rose-800">
+                    {(fastForward.error as Error).message}
+                  </p>
+                )}
+              </section>
+            )}
 
             {detail.status === 'AWAITING_STAKE' && (
               <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
