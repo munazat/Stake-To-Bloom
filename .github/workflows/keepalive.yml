@@ -1,0 +1,62 @@
+name: Supabase keepalive and operations
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+    - cron: '31 8 * * *'
+    - cron: '47 8 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required GitHub secrets
+        id: config
+        env:
+          PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$PROJECT_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "## Operations skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "Add SUPABASE_PROJECT_URL and CRON_SECRET after hosted Supabase is wired. No live checks ran." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Keep Supabase awake and run the hourly tick
+        if: steps.config.outputs.configured == 'true' && (github.event.schedule == '17 * * * *' || github.event_name == 'workflow_dispatch')
+        env:
+          PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            -X POST "$PROJECT_URL/functions/v1/cron-tick" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H 'Content-Type: application/json' -d '{}'
+
+      - name: Check service health daily
+        if: steps.config.outputs.configured == 'true' && (github.event.schedule == '31 8 * * *' || github.event_name == 'workflow_dispatch')
+        env:
+          PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --retry 2 --retry-all-errors \
+            -X POST "$PROJECT_URL/functions/v1/ops-health" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H 'Content-Type: application/json' -d '{}'
+
+      - name: Run the scheduled keepalive tick
+        if: steps.config.outputs.configured == 'true' && github.event.schedule == '47 8 */3 * *'
+        env:
+          PROJECT_URL: ${{ secrets.SUPABASE_PROJECT_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            -X POST "$PROJECT_URL/functions/v1/cron-tick" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H 'Content-Type: application/json' -d '{}'
