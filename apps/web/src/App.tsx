@@ -8,6 +8,7 @@ import Landing from './routes/Landing.tsx'
 const PactNew = lazy(() => import('./routes/PactNew.tsx'))
 // The garden pulls in three and the WebGL renderer, the heaviest dependency here.
 const Garden = lazy(() => import('./routes/Garden.tsx'))
+const PactDetail = lazy(() => import('./routes/PactDetail.tsx'))
 
 function Deferred({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -32,6 +33,14 @@ export default function App() {
         element={
           <Deferred label="Loading the pact wizard…">
             <PactNew />
+          </Deferred>
+        }
+      />
+      <Route
+        path="/pact/:id"
+        element={
+          <Deferred label="Loading your pact…">
+            <PactDetail />
           </Deferred>
         }
       />

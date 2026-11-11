@@ -7,7 +7,7 @@
  * sends a RuleSpec or a hash: it sends choices, and the server builds and hashes
  * the contract (invariant I9).
  */
-import type { GoalType, PactStatus, RuleSpec } from '@bloomstake/core'
+import type { GoalType, PactStatus, RuleSpec, Verdict } from '@bloomstake/core'
 import { ensureSession } from './session.ts'
 import { edgeFunctionUrl, supabaseAnonKey } from './config.ts'
 
@@ -61,28 +61,105 @@ export function browserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 }
 
-function isPactPayload(payload: unknown): payload is { pact: CreatedPact } {
-  return typeof payload === 'object' && payload !== null && 'pact' in payload
-}
-
-export async function createPact(input: CreatePactInput): Promise<CreatedPact> {
+/** POST to an Edge Function with the guest token; throws ApiError on any failure. */
+async function post(name: string, body: unknown): Promise<unknown> {
   const session = await ensureSession()
-  const response = await fetch(edgeFunctionUrl('pact-create'), {
+  const response = await fetch(edgeFunctionUrl(name), {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       apikey: supabaseAnonKey,
       authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify(input),
+    body: JSON.stringify(body),
   })
   const payload: unknown = await response.json().catch(() => null)
-  if (!response.ok || !isPactPayload(payload)) {
+  if (!response.ok) {
     const error =
       payload && typeof payload === 'object' && 'error' in payload
         ? ((payload as { error: ApiErrorBody }).error ?? null)
         : null
     throw new ApiError(response.status, error)
   }
+  return payload
+}
+
+function isPactPayload(payload: unknown): payload is { pact: CreatedPact } {
+  return typeof payload === 'object' && payload !== null && 'pact' in payload
+}
+
+export async function createPact(input: CreatePactInput): Promise<CreatedPact> {
+  const payload = await post('pact-create', input)
+  if (!isPactPayload(payload))
+    throw new ApiError(502, { code: 'bad_response', message: 'Unexpected server response.' })
   return payload.pact
+}
+
+export interface DraftRuleInput {
+  description: string
+  stakeCents: number
+  requiredPasses: number
+  tz: string
+}
+
+/**
+ * Ask the AI to propose a custom rule. The result is a DRAFT: the server built
+ * and hashed the spec, and nothing is payable until confirmPact().
+ */
+export async function draftRule(input: DraftRuleInput): Promise<CreatedPact> {
+  const payload = await post('rule-draft', input)
+  const draft = (payload as { draft?: CreatedPact } | null)?.draft
+  if (!draft)
+    throw new ApiError(502, { code: 'bad_response', message: 'Unexpected server response.' })
+  return draft
+}
+
+/** Lock the exact drafted contract (DRAFT -> AWAITING_STAKE). Sends only the pact id. */
+export async function confirmPact(pactId: string): Promise<CreatedPact> {
+  const payload = await post('pact-confirm', { pact_id: pactId })
+  if (!isPactPayload(payload))
+    throw new ApiError(502, { code: 'bad_response', message: 'Unexpected server response.' })
+  return payload.pact
+}
+
+// ---------------------------------------------------------------------------
+// Proofs
+// ---------------------------------------------------------------------------
+
+export interface ProofEvidence {
+  id: string
+  description: string
+  found: boolean
+  value: number | boolean | null
+  evidenceText: string
+  /** [ymin, xmin, ymax, xmax] on a 0-1000 scale, or null. */
+  box: [number, number, number, number] | null
+}
+
+/** What submit-proof returns. Every string here is AI- or server-written: render as text only. */
+export interface ProofResult {
+  outcome: 'judged' | 'queued' | 'duplicate' | 'already_verified'
+  proofId: string | null
+  dayIndex: number
+  attemptNo: number | null
+  attemptsLeft: number
+  verdict: Verdict | null
+  reasons: string[]
+  injectionFlag: boolean
+  evidence: ProofEvidence[]
+  model: string | null
+  cached: boolean
+  vitality: number | null
+}
+
+/**
+ * The client names the pact and the file it uploaded. The server decides the day
+ * (from its own clock), the verdict, and the user — none of those are sent.
+ */
+export async function submitProof(pactId: string, storagePath: string): Promise<ProofResult> {
+  const payload = await post('submit-proof', { pact_id: pactId, storage_path: storagePath })
+  const proof = (payload as { proof?: ProofResult } | null)?.proof
+  if (!proof)
+    throw new ApiError(502, { code: 'bad_response', message: 'Unexpected server response.' })
+  return proof
 }

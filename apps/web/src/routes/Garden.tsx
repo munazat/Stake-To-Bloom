@@ -65,17 +65,19 @@ export default function Garden() {
           ← Back
         </Link>
 
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-emerald-800">Your garden</h1>
+        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-emerald-800">
+          Your garden
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Every verified day grows the plant. A missed day makes it droop. Vitality is computed by the
-          server — this page only draws it.
+          Every verified day grows the plant. A missed day makes it droop. Vitality is computed by
+          the server — this page only draws it.
         </p>
 
         {!isSupabaseConfigured ? (
           <p role="alert" className="mt-6 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800">
             Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and set{' '}
-            <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>, then restart the dev
-            server.
+            <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>, then restart the
+            dev server.
           </p>
         ) : plots.isPending ? (
           <p role="status" className="mt-8 text-sm text-slate-500">
@@ -87,7 +89,9 @@ export default function Garden() {
           </p>
         ) : plots.data.length === 0 ? (
           <div className="mt-8 rounded-xl border border-dashed border-emerald-300 bg-white p-8 text-center">
-            <p className="text-sm text-slate-600">No pacts yet. Lock a contract to prepare your first plot.</p>
+            <p className="text-sm text-slate-600">
+              No pacts yet. Lock a contract to prepare your first plot.
+            </p>
             <Link
               to="/pact/new"
               className="mt-4 inline-block rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
@@ -98,22 +102,29 @@ export default function Garden() {
         ) : (
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {plots.data.map((plot) => (
-              <GardenPlot
-                key={plot.id}
-                title={plot.title}
-                stage={plot.stage}
-                vitality={plot.vitality}
-                passedDays={plot.passedDays}
-                days={plot.days}
-                caption={[
-                  STATUS_LABELS[plot.status],
-                  `${formatUsd(plot.stakeCents)} ${plot.currency}`,
-                  `${plot.requiredPasses}/${plot.days} to pass`,
-                  plot.isDemo ? 'demo player' : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              />
+              <div key={plot.id}>
+                <GardenPlot
+                  title={plot.title}
+                  stage={plot.stage}
+                  vitality={plot.vitality}
+                  passedDays={plot.passedDays}
+                  days={plot.days}
+                  caption={[
+                    STATUS_LABELS[plot.status],
+                    `${formatUsd(plot.stakeCents)} ${plot.currency}`,
+                    `${plot.requiredPasses}/${plot.days} to pass`,
+                    plot.isDemo ? 'demo player' : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                />
+                <Link
+                  to={`/pact/${plot.id}`}
+                  className="mt-2 inline-block text-sm font-medium text-emerald-700 hover:underline"
+                >
+                  Open pact →
+                </Link>
+              </div>
             ))}
           </div>
         )}
