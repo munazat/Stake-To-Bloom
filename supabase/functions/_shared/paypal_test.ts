@@ -215,6 +215,24 @@ Deno.test(
   },
 )
 
+Deno.test('mock adapter reports payout and refund results deterministically', async () => {
+  const mock = createMockPaypalClient()
+  const payout = await mock.createPayout({
+    batchId: 'bloom-settle-p1',
+    items: [{ id: 'item-1', email: 'buyer@example.test', amountCents: 2000 }],
+  })
+  assert.deepEqual(payout, { batchId: 'MOCK-bloom-settle-p1', status: 'SUCCESS' })
+  assert.equal((await mock.getPayout(payout.batchId)).status, 'SUCCESS')
+  assert.deepEqual(
+    await mock.refundCapture({
+      captureId: 'CAP1',
+      amountCents: 500,
+      requestId: 'bloom-refund-CAP1',
+    }),
+    { id: 'MOCK-REFUND.CAP1', status: 'COMPLETED' },
+  )
+})
+
 Deno.test('I10: payments_enabled must be exactly true, else 503', async () => {
   const admin = (value: unknown) =>
     // deno-lint-ignore no-explicit-any

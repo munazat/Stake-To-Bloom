@@ -149,6 +149,18 @@ export function fakePaypal(order: PaypalOrder = completedOrder()): FakePaypal {
       p.calls.push('capture')
       return p.captureError ? Promise.reject(p.captureError) : Promise.resolve(p.orderToReturn)
     },
+    createPayout({ batchId }) {
+      p.calls.push('payout')
+      return Promise.resolve({ batchId, status: 'SUCCESS' })
+    },
+    getPayout(batchId) {
+      p.calls.push('getPayout')
+      return Promise.resolve({ batchId, status: 'SUCCESS' })
+    },
+    refundCapture({ captureId }) {
+      p.calls.push('refund')
+      return Promise.resolve({ id: `REFUND-${captureId}`, status: 'COMPLETED' })
+    },
     verifyWebhook(input) {
       p.calls.push('verify')
       p.verifyInputs.push(input)

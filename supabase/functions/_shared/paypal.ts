@@ -107,6 +107,16 @@ export interface PaypalClient {
   createOrder(input: CreateOrderInput): Promise<{ id: string; status: string }>
   getOrder(orderId: string): Promise<PaypalOrder>
   captureOrder(orderId: string): Promise<PaypalOrder>
+  createPayout(input: {
+    batchId: string
+    items: Array<{ id: string; email: string; amountCents: number }>
+  }): Promise<{ batchId: string; status: string }>
+  getPayout(batchId: string): Promise<{ batchId: string; status: string }>
+  refundCapture(input: {
+    captureId: string
+    amountCents: number
+    requestId: string
+  }): Promise<{ id: string; status: string }>
   verifyWebhook(input: WebhookVerifyInput): Promise<boolean>
 }
 
@@ -284,6 +294,55 @@ export function createPaypalClient(options: PaypalClientOptions): PaypalClient {
       )
     },
 
+    async createPayout(input) {
+      const payload = (await paypalFetch('/v1/payments/payouts', {
+        method: 'POST',
+        requestId: input.batchId,
+        body: {
+          sender_batch_header: {
+            sender_batch_id: input.batchId,
+            email_subject: 'Your BloomStake settlement',
+          },
+          items: input.items.map((item) => ({
+            sender_item_id: item.id,
+            recipient_type: 'EMAIL',
+            receiver: item.email,
+            amount: { value: centsToPaypalString(item.amountCents), currency: 'USD' },
+            recipient_wallet: 'PAYPAL',
+          })),
+        },
+      })) as { batch_header?: { payout_batch_id?: string; batch_status?: string } }
+      if (!payload.batch_header?.payout_batch_id)
+        throw new Error('PayPal payout response had no batch id')
+      return {
+        batchId: payload.batch_header.payout_batch_id,
+        status: payload.batch_header.batch_status ?? 'PENDING',
+      }
+    },
+
+    async getPayout(batchId) {
+      const payload = (await paypalFetch(`/v1/payments/payouts/${encodeURIComponent(batchId)}`, {
+        method: 'GET',
+      })) as { batch_header?: { payout_batch_id?: string; batch_status?: string } }
+      return {
+        batchId: payload.batch_header?.payout_batch_id ?? batchId,
+        status: payload.batch_header?.batch_status ?? 'UNKNOWN',
+      }
+    },
+
+    async refundCapture(input) {
+      const payload = (await paypalFetch(
+        `/v2/payments/captures/${encodeURIComponent(input.captureId)}/refund`,
+        {
+          method: 'POST',
+          requestId: input.requestId,
+          body: { amount: { value: centsToPaypalString(input.amountCents), currency_code: 'USD' } },
+        },
+      )) as { id?: string; status?: string }
+      if (!payload.id) throw new Error('PayPal refund response had no id')
+      return { id: payload.id, status: payload.status ?? 'PENDING' }
+    },
+
     async verifyWebhook({ headers, webhookId, rawEventBody }) {
       const fields = {
         auth_algo: headers.get('paypal-auth-algo'),
@@ -370,6 +429,11 @@ export function createMockPaypalClient(): PaypalClient {
       }),
     getOrder: (orderId) => Promise.resolve().then(() => orderBody(orderId, 'CREATED', false)),
     captureOrder: (orderId) => Promise.resolve().then(() => orderBody(orderId, 'COMPLETED', true)),
+    createPayout: ({ batchId }) =>
+      Promise.resolve({ batchId: `MOCK-${batchId}`, status: 'SUCCESS' }),
+    getPayout: (batchId) => Promise.resolve({ batchId, status: 'SUCCESS' }),
+    refundCapture: ({ captureId }) =>
+      Promise.resolve({ id: `MOCK-REFUND.${captureId}`, status: 'COMPLETED' }),
     verifyWebhook: ({ headers }) => Promise.resolve(headers.get('x-mock-webhook') === 'valid'),
   }
 }

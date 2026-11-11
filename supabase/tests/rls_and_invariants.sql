@@ -95,8 +95,41 @@ select throws_ok(
   '40001', null, 'a stale/duplicate transition fails — exactly one wins'
 );
 
+-- Pool settlement transitions all members as one compare-and-set transaction.
+insert into public.pacts
+  (id, user_id, goal_type, title, rule_spec, rule_hash, stake_cents, currency,
+   required_passes, days, status, tz)
+values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        '11111111-1111-1111-1111-111111111111', 'steps', 'Pool member', '{}'::jsonb,
+        repeat('b', 64), 2000, 'USD', 5, 7, 'ACTIVE', 'UTC')
+on conflict (id) do nothing;
+insert into public.pact_days (pact_id, day_index, date_local, status)
+values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 0, current_date, 'PENDING'),
+       ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 0, current_date, 'PENDING');
+select lives_ok(
+  $$ select public.transition_pacts(array['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid], 'ACTIVE', 'SETTLING') $$,
+  'atomic transition claims all settlement members'
+);
 select throws_ok(
-  $$ update public.pacts set status = 'SETTLED_PASS' where id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' $$,
+  $$ select public.transition_pacts(array['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid], 'ACTIVE', 'SETTLING') $$,
+  '40001', null, 'a competing pool settlement loses the atomic claim'
+);
+select lives_ok(
+  $$ select public.transition_pacts(array['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid, 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'::uuid], 'SETTLING', 'SETTLED_PASS') $$,
+  'terminal transition closes every member in the settlement'
+);
+select is((select count(*) from public.pact_days where pact_id in ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') and status = 'MISSED'), 2::bigint, 'terminal settlement closes unresolved days');
+select is((select count(*) from public.pacts where id in ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') and vitality = 1), 2::bigint, 'successful settlement blooms every pact');
+
+insert into public.pacts
+  (id, user_id, goal_type, title, rule_spec, rule_hash, stake_cents, currency,
+   required_passes, days, status, tz)
+values ('cccccccc-cccc-cccc-cccc-cccccccccccc',
+        '11111111-1111-1111-1111-111111111111', 'steps', 'Guard test pact', '{}'::jsonb,
+        repeat('c', 64), 2000, 'USD', 5, 7, 'ACTIVE', 'UTC');
+
+select throws_ok(
+  $$ update public.pacts set status = 'SETTLED_PASS' where id = 'cccccccc-cccc-cccc-cccc-cccccccccccc' $$,
   '22023', null, 'illegal edge ACTIVE -> SETTLED_PASS rejected by the guard trigger'
 );
 
