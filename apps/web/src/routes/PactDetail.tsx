@@ -11,7 +11,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatUsd, gardenStage } from '@bloomstake/core'
 import GardenPlot from '../garden/GardenPlot.tsx'
 import { SandboxBanner } from './Landing.tsx'
-import { ApiError, captureStakeOrder, type ProofResult } from '../lib/api.ts'
+import { ApiError, captureStakeOrder, refundPact, type ProofResult } from '../lib/api.ts'
 import { maskEmail } from '../lib/audit.ts'
 import StakeButton from './StakeButton.tsx'
 import { isSupabaseConfigured } from '../lib/config.ts'
@@ -200,6 +200,14 @@ export default function PactDetailRoute() {
     },
   })
 
+  const refund = useMutation({
+    mutationFn: () => refundPact(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['pact', id] })
+      void queryClient.invalidateQueries({ queryKey: ['plots'] })
+    },
+  })
+
   async function submitSample(kind: SampleKind) {
     if (!detail || today === null) return
     const blob = await renderSample(sampleSpec(kind, sampleContextFor(detail, today)))
@@ -289,6 +297,31 @@ export default function PactDetailRoute() {
                 />
               </section>
             )}
+
+            {detail.status === 'ACTIVE' &&
+              detail.startsAt &&
+              new Date(detail.startsAt) > new Date() &&
+              detail.proofs.length === 0 && (
+                <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm text-amber-900">
+                    You can cancel before your first pact day begins and receive a full stake
+                    refund.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={refund.isPending}
+                    onClick={() => refund.mutate()}
+                    className="mt-3 rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50"
+                  >
+                    {refund.isPending ? 'Requesting refund…' : 'Cancel pact and refund stake'}
+                  </button>
+                  {refund.error && (
+                    <p role="alert" className="mt-2 text-sm text-rose-800">
+                      {(refund.error as Error).message}
+                    </p>
+                  )}
+                </section>
+              )}
 
             {isActive && (
               <section className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
@@ -406,6 +439,38 @@ export default function PactDetailRoute() {
                   PayPal audit feed
                 </Link>
               </p>
+            )}
+
+            {detail.settlement && (
+              <section
+                className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4"
+                aria-label="Settlement receipt"
+              >
+                <h2 className="text-lg font-bold text-emerald-900">Why this payout?</h2>
+                <p className="mt-1 text-sm text-emerald-800">
+                  Settlement {detail.settlement.status.toLowerCase().replace(/_/g, ' ')}
+                </p>
+                {Array.isArray(detail.settlement.plan.trace) && (
+                  <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+                    {detail.settlement.plan.trace.map(
+                      (line, i) => typeof line === 'string' && <li key={i}>{line}</li>,
+                    )}
+                  </ol>
+                )}
+                {typeof detail.settlement.senderBatchId === 'string' && (
+                  <p className="mt-3 break-all text-xs">
+                    Sender batch: <code>{detail.settlement.senderBatchId}</code>
+                  </p>
+                )}
+                {typeof detail.settlement.payoutBatchId === 'string' && (
+                  <p className="break-all text-xs">
+                    PayPal batch: <code>{detail.settlement.payoutBatchId}</code>
+                  </p>
+                )}
+                <p className="mt-2 break-all text-xs">
+                  Frozen rule hash: <code>{detail.ruleHash}</code>
+                </p>
+              </section>
             )}
 
             <p className="mt-8 break-all text-xs text-slate-400">

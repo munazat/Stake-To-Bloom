@@ -122,6 +122,11 @@ export async function confirmPact(pactId: string): Promise<CreatedPact> {
   return payload.pact
 }
 
+/** Cancel an ACTIVE pact before day one; the server validates eligibility and refunds the capture. */
+export async function refundPact(pactId: string): Promise<void> {
+  await post('refund-pact', { pact_id: pactId })
+}
+
 // ---------------------------------------------------------------------------
 // Proofs
 // ---------------------------------------------------------------------------

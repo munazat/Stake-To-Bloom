@@ -49,6 +49,13 @@ export interface PactDetail {
   spec: RuleSpec
   paypalOrderId: string | null
   payerEmail: string | null
+  settlement: {
+    status: string
+    plan: Record<string, unknown>
+    planHash: string
+    senderBatchId: string | null
+    payoutBatchId: string | null
+  } | null
   dayRows: PactDay[]
   proofs: ProofRecord[]
 }
@@ -65,6 +72,7 @@ interface PactRow {
   tz: string
   starts_at: string | null
   is_demo: boolean
+  pool_id: string | null
   rule_hash: string
   rule_spec: unknown
   paypal_order_id: string | null
@@ -83,7 +91,7 @@ interface ProofRow {
 }
 
 const PACT_COLUMNS =
-  'id,title,status,vitality,stake_cents,currency,required_passes,days,tz,starts_at,is_demo,rule_hash,rule_spec,paypal_order_id,payer_email,pact_days(day_index,date_local,status)'
+  'id,title,status,vitality,stake_cents,currency,required_passes,days,tz,starts_at,is_demo,pool_id,rule_hash,rule_spec,paypal_order_id,payer_email,pact_days(day_index,date_local,status)'
 
 export async function fetchPactDetail(id: string): Promise<PactDetail | null> {
   if (!supabase) return null
@@ -105,6 +113,13 @@ export async function fetchPactDetail(id: string): Promise<PactDetail | null> {
     .order('created_at', { ascending: false })
   if (proofError) throw new Error(proofError.message)
 
+  const { data: settlementRow, error: settlementError } = await supabase
+    .from('settlements')
+    .select('status,plan,plan_hash,sender_batch_id,payout_batch_id')
+    .eq(row.pool_id ? 'pool_id' : 'pact_id', row.pool_id ?? id)
+    .maybeSingle()
+  if (settlementError) throw new Error(settlementError.message)
+
   return {
     id: row.id,
     title: row.title,
@@ -121,6 +136,15 @@ export async function fetchPactDetail(id: string): Promise<PactDetail | null> {
     spec: RuleSpecSchema.parse(row.rule_spec),
     paypalOrderId: row.paypal_order_id,
     payerEmail: row.payer_email,
+    settlement: settlementRow
+      ? {
+          status: settlementRow.status,
+          plan: settlementRow.plan as Record<string, unknown>,
+          planHash: settlementRow.plan_hash,
+          senderBatchId: settlementRow.sender_batch_id,
+          payoutBatchId: settlementRow.payout_batch_id,
+        }
+      : null,
     dayRows: (row.pact_days ?? [])
       .map((d) => ({ dayIndex: d.day_index, dateLocal: d.date_local, status: d.status }))
       .sort((a, b) => a.dayIndex - b.dayIndex),

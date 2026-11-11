@@ -48,6 +48,7 @@ function detail(overrides: Partial<PactDetail> = {}): PactDetail {
     spec: stepsSpec(),
     paypalOrderId: null,
     payerEmail: null,
+    settlement: null,
     dayRows: Array.from({ length: 7 }, (_, i) => ({
       dayIndex: i,
       dateLocal: '2026-11-11',
