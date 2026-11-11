@@ -68,7 +68,7 @@ export default function AdminRoute() {
           </button>
         </div>
         <label className="mt-6 block text-sm font-semibold">
-          Retry settlement for pact ID
+          Retry eligible settlement for pact ID
           <input
             value={pactId}
             onChange={(e) => setPactId(e.target.value)}
@@ -80,8 +80,12 @@ export default function AdminRoute() {
           onClick={() => void call('admin-retry', { action: 'settle', pact_id: pactId })}
           className="mt-2 rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 disabled:opacity-50"
         >
-          Retry settlement
+          Retry eligible settlement
         </button>
+        <p className="mt-2 text-xs text-slate-500">
+          Only a stored plan with no submitted payout can be retried safely. Use payout polling and
+          manual review after PayPal has accepted a batch.
+        </p>
         {message && (
           <pre
             role="status"
