@@ -15,3 +15,15 @@ enable_anonymous_sign_ins = true
 # not silently open a money-adjacent endpoint.
 [functions.pact-create]
 verify_jwt = true
+
+# PayPal cannot send a Supabase JWT, so this one function is public at the gateway.
+# It authenticates the caller by verifying PayPal's own signature
+# (paypal-webhook/flow.ts) and does nothing without it.
+[functions.paypal-webhook]
+verify_jwt = false
+
+[functions.paypal-create-order]
+verify_jwt = true
+
+[functions.paypal-capture-order]
+verify_jwt = true
