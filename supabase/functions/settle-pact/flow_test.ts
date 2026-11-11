@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { sha256Hex, canonicalJson } from '../_shared/core/index.ts'
+import { sha256Hex, canonicalJson, settle } from '../_shared/core/index.ts'
 import { fakePaypal, USER } from '../_shared/testkit.ts'
 import { settlePact, type SettlementDeps } from './flow.ts'
 
@@ -24,6 +24,7 @@ function setup() {
     hasEarlierPayout: false,
   }
   let status = 'ACTIVE'
+  let retry: { planHash: string; batchId: string; payoutSubmitted: boolean } | null = null
   const deps: SettlementDeps = {
     paypal,
     async transition(_ids, from, to) {
@@ -37,6 +38,7 @@ function setup() {
         settlementEnabled: true,
         paymentsEnabled: true,
         payoutExists: false,
+        retry,
         input: {
           members: [
             {
@@ -62,7 +64,18 @@ function setup() {
     async markSubmitted() {},
     async completeNoPayout() {},
   }
-  return { deps, paypal, saved, getStatus: () => status }
+  return {
+    deps,
+    paypal,
+    saved,
+    getStatus: () => status,
+    setStatus(value: string) {
+      status = value
+    },
+    setRetry(value: typeof retry) {
+      retry = value
+    },
+  }
 }
 
 Deno.test(
@@ -92,3 +105,22 @@ Deno.test('stored plan hash is SHA-256 over canonical settlement JSON', async ()
   const row = saved[0] as { payoutPlan: unknown; hash: string }
   assert.equal(row.hash, await sha256Hex(canonicalJson(row.payoutPlan)))
 })
+
+Deno.test(
+  'admin retry reuses the immutable plan hash and deterministic PayPal batch id',
+  async () => {
+    const { deps, paypal, saved, setStatus, setRetry } = setup()
+    const loaded = await deps.load('p1')
+    if (!loaded) throw new Error('fixture did not load')
+    const plan = settle(loaded.input)
+    const planHash = await sha256Hex(canonicalJson(plan))
+    setStatus('NEEDS_REVIEW')
+    setRetry({ planHash, batchId: 'bloom-settle-p1', payoutSubmitted: false })
+
+    const result = await settlePact(deps, 'p1', 'admin')
+    assert.equal(result.status, 'SUCCESS')
+    assert.equal(result.batchId, 'bloom-settle-p1')
+    assert.equal(saved.length, 1)
+    assert.equal(paypal.calls.filter((call) => call === 'payout').length, 1)
+  },
+)

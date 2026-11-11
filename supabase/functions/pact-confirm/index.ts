@@ -9,6 +9,7 @@ import { z } from 'zod'
 import { RuleSpecSchema } from '../_shared/core/index.ts'
 import { requireUserId, serviceClient } from '../_shared/auth.ts'
 import { HttpError, assertMethod, json, readJsonBody, withCors } from '../_shared/http.ts'
+import { enforceCounter, requestIp } from '../_shared/rateLimit.ts'
 
 const RequestSchema = z.object({ pact_id: z.string().uuid() })
 
@@ -17,14 +18,19 @@ const handler = async (request: Request): Promise<Response> => {
   const admin = serviceClient()
   const userId = await requireUserId(request, admin)
   const { pact_id } = RequestSchema.parse(await readJsonBody(request))
+  await enforceCounter(admin, { scope: 'USER', value: userId, limit: 10 })
+  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 30 })
 
   const { data: pact, error } = await admin
     .from('pacts')
-    .select('id, user_id, status, title, goal_type, stake_cents, currency, required_passes, days, tz, created_at, rule_spec, rule_hash')
+    .select(
+      'id, user_id, status, title, goal_type, stake_cents, currency, required_passes, days, tz, created_at, rule_spec, rule_hash',
+    )
     .eq('id', pact_id)
     .maybeSingle()
   if (error) throw new Error('load pact failed')
-  if (!pact || pact.user_id !== userId) throw new HttpError(404, 'pact_not_found', 'No such pact for this account.')
+  if (!pact || pact.user_id !== userId)
+    throw new HttpError(404, 'pact_not_found', 'No such pact for this account.')
   if (pact.status !== 'DRAFT') {
     throw new HttpError(409, 'not_a_draft', 'Only an unconfirmed draft can be confirmed.')
   }
@@ -35,7 +41,8 @@ const handler = async (request: Request): Promise<Response> => {
     p_to: 'AWAITING_STAKE',
   })
   if (moveError) {
-    if (moveError.code === '40001') throw new HttpError(409, 'already_confirmed', 'This pact was already confirmed.')
+    if (moveError.code === '40001')
+      throw new HttpError(409, 'already_confirmed', 'This pact was already confirmed.')
     throw new Error('transition failed')
   }
 

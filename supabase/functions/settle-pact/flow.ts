@@ -17,6 +17,7 @@ export interface SettlementDeps {
     settlementEnabled: boolean
     paymentsEnabled: boolean
     payoutExists: boolean
+    retry?: { planHash: string; batchId: string; payoutSubmitted: boolean } | null
     input: SettleInput
     guard: Omit<PayoutGuardInput, 'plan' | 'expectedPlanHash' | 'storedPlanHash'>
   } | null>
@@ -40,10 +41,22 @@ export async function settlePact(
     throw new HttpError(409, 'settlement_race', 'Another settlement worker is handling this pact.')
   let plan: SettleResult | null = null
   let hash = ''
-  const batchId = `bloom-settle-${id}`
+  const batchId = loaded.retry?.batchId ?? `bloom-settle-${id}`
   try {
     plan = settle(loaded.input)
     hash = await sha256Hex(canonicalJson(plan))
+    if (loaded.retry && hash !== loaded.retry.planHash)
+      throw new HttpError(
+        409,
+        'settlement_plan_changed',
+        'The stored settlement plan no longer matches.',
+      )
+    if (loaded.retry?.payoutSubmitted)
+      throw new HttpError(
+        409,
+        'payout_needs_review',
+        'A payout was already submitted; review its status before retrying.',
+      )
     await deps.savePlan(id, plan, hash, batchId)
     await assertPayoutSafe({
       ...loaded.guard,

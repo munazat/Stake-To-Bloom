@@ -27,3 +27,31 @@ verify_jwt = true
 
 [functions.paypal-capture-order]
 verify_jwt = true
+
+[functions.demo-bootstrap]
+verify_jwt = true
+
+[functions.demo-advance]
+verify_jwt = true
+
+# These routes authenticate with their own high-entropy shared secrets.
+[functions.cron-tick]
+verify_jwt = false
+
+[functions.ops-health]
+verify_jwt = false
+
+[functions.admin-retry]
+verify_jwt = false
+
+[functions.refund-pact]
+verify_jwt = true
+
+[functions.settle-pact]
+verify_jwt = false
+
+[functions.settlement-poll]
+verify_jwt = false
+
+[functions.demo-proof-purge]
+verify_jwt = false

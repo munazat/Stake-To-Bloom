@@ -19,6 +19,7 @@ import {
 import { requireUserId, serviceClient } from '../_shared/auth.ts'
 import { textDepsFromEnv } from '../_shared/gemini.ts'
 import { HttpError, assertMethod, json, readJsonBody, withCors } from '../_shared/http.ts'
+import { enforceCounter, requestIp } from '../_shared/rateLimit.ts'
 import { draftRuleSpec } from './draft.ts'
 
 const MAX_OPEN_DRAFTS = 5
@@ -39,6 +40,8 @@ const handler = async (request: Request): Promise<Response> => {
   assertMethod(request, 'POST')
   const admin = serviceClient()
   const userId = await requireUserId(request, admin)
+  await enforceCounter(admin, { scope: 'USER', value: userId, limit: 5 })
+  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 20 })
   const body = RequestSchema.parse(await readJsonBody(request))
   try {
     localDateKey(new Date(), body.tz)
@@ -46,9 +49,17 @@ const handler = async (request: Request): Promise<Response> => {
     throw new HttpError(400, 'invalid_timezone', `"${body.tz}" is not an IANA timezone name.`)
   }
 
-  const { data: cfg } = await admin.from('app_config').select('value').eq('key', 'ai_enabled').maybeSingle()
+  const { data: cfg } = await admin
+    .from('app_config')
+    .select('value')
+    .eq('key', 'ai_enabled')
+    .maybeSingle()
   if (cfg?.value !== true) {
-    throw new HttpError(503, 'ai_unavailable', 'AI drafting is paused right now. Pick one of the template goals.')
+    throw new HttpError(
+      503,
+      'ai_unavailable',
+      'AI drafting is paused right now. Pick one of the template goals.',
+    )
   }
 
   const { count: openDrafts } = await admin
@@ -57,22 +68,36 @@ const handler = async (request: Request): Promise<Response> => {
     .eq('user_id', userId)
     .eq('status', 'DRAFT')
   if ((openDrafts ?? 0) >= MAX_OPEN_DRAFTS) {
-    throw new HttpError(429, 'too_many_drafts', 'You have several unconfirmed drafts. Lock or abandon one first.')
+    throw new HttpError(
+      429,
+      'too_many_drafts',
+      'You have several unconfirmed drafts. Lock or abandon one first.',
+    )
   }
 
-  const { data: usage, error: usageError } = await admin.rpc('bump_ai_usage_pair', { p_user_id: userId })
+  const { data: usage, error: usageError } = await admin.rpc('bump_ai_usage_pair', {
+    p_user_id: userId,
+  })
   if (usageError) throw new Error('usage bump failed')
   const row = Array.isArray(usage) ? usage[0] : usage
   if (
     Number(row?.user_count ?? Infinity) > intEnv('AI_DAILY_CAP_USER', 8) ||
     Number(row?.global_count ?? Infinity) > intEnv('AI_DAILY_CAP_GLOBAL', 300)
   ) {
-    throw new HttpError(429, 'ai_cap_reached', "Today's AI allowance is used up. Try a template goal, or come back tomorrow.")
+    throw new HttpError(
+      429,
+      'ai_cap_reached',
+      "Today's AI allowance is used up. Try a template goal, or come back tomorrow.",
+    )
   }
 
   const drafted = await draftRuleSpec(body.description, body.requiredPasses, textDepsFromEnv())
   if (drafted.kind === 'unavailable') {
-    throw new HttpError(503, 'ai_unavailable', 'The AI drafter is unavailable right now. Pick one of the template goals.')
+    throw new HttpError(
+      503,
+      'ai_unavailable',
+      'The AI drafter is unavailable right now. Pick one of the template goals.',
+    )
   }
   if (drafted.kind === 'not_verifiable') {
     throw new HttpError(
@@ -84,7 +109,8 @@ const handler = async (request: Request): Promise<Response> => {
 
   const { spec } = drafted
   const hash = await ruleHash(spec)
-  if (!/^[0-9a-f]{64}$/.test(hash)) throw new HttpError(500, 'bad_rule_hash', 'Computed rule hash is malformed.')
+  if (!/^[0-9a-f]{64}$/.test(hash))
+    throw new HttpError(500, 'bad_rule_hash', 'Computed rule hash is malformed.')
 
   const { data: pact, error } = await admin
     .from('pacts')

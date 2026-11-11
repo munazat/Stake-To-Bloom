@@ -25,6 +25,7 @@ import {
 } from '../_shared/core/index.ts'
 import { requireUserId, serviceClient } from '../_shared/auth.ts'
 import { HttpError, assertMethod, json, readJsonBody, withCors } from '../_shared/http.ts'
+import { enforceCounter, requestIp } from '../_shared/rateLimit.ts'
 
 /**
  * 'custom' is deliberately absent: a custom goal needs the AI to propose checks
@@ -68,6 +69,22 @@ const handler = async (request: Request): Promise<Response> => {
   assertMethod(request, 'POST')
   const admin = serviceClient()
   const userId = await requireUserId(request, admin)
+  await enforceCounter(admin, { scope: 'USER', value: userId, limit: 5 })
+  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 20 })
+  const { count, error: capError } = await admin
+    .from('pacts')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_simulated', false)
+    .in('status', ['AWAITING_STAKE', 'ACTIVE', 'SETTLING', 'NEEDS_REVIEW'])
+  if (capError)
+    throw new HttpError(503, 'pact_limit_unavailable', 'Could not check your active pact limit.')
+  if ((count ?? 0) >= 3)
+    throw new HttpError(
+      429,
+      'active_pact_limit',
+      'You can have up to three active pacts at a time.',
+    )
   const body = RequestSchema.parse(await readJsonBody(request))
   const tz = assertTimeZone(body.tz)
 

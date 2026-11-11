@@ -121,6 +121,49 @@ select lives_ok(
 select is((select count(*) from public.pact_days where pact_id in ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') and status = 'MISSED'), 2::bigint, 'terminal settlement closes unresolved days');
 select is((select count(*) from public.pacts where id in ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb') and vitality = 1), 2::bigint, 'successful settlement blooms every pact');
 
+select is(public.bump_request_counter('USER', repeat('1', 64), timestamptz '2026-11-11 00:00:00+00', 2), 1, 'rate counter starts at one');
+select is(public.bump_request_counter('USER', repeat('1', 64), timestamptz '2026-11-11 00:00:00+00', 2), 2, 'rate counter increments atomically');
+select is(public.bump_request_counter('USER', repeat('1', 64), timestamptz '2026-11-11 00:00:00+00', 2), 0, 'rate counter rejects requests over the configured limit');
+
+-- Demo progression is serialized by pool and explicitly marks generated days.
+insert into public.pools (id, name, is_demo, status)
+values ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'Phase 9 demo test', true, 'ACTIVE');
+insert into public.pacts
+  (id, user_id, pool_id, goal_type, title, rule_spec, rule_hash, stake_cents, currency,
+   required_passes, days, status, tz, is_demo, is_simulated, demo_role)
+values
+  ('d0000000-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'steps', 'Demo owner', '{}'::jsonb, repeat('d',64), 2000, 'USD', 5, 7, 'ACTIVE', 'UTC', true, true, 'OWNER'),
+  ('d0000000-0000-0000-0000-000000000002', '33333333-3333-3333-3333-333333333333', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'steps', 'Mia', '{}'::jsonb, repeat('d',64), 2000, 'USD', 5, 7, 'ACTIVE', 'UTC', true, true, 'MIA'),
+  ('d0000000-0000-0000-0000-000000000003', '33333333-3333-3333-3333-333333333333', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'steps', 'Omar', '{}'::jsonb, repeat('d',64), 2000, 'USD', 5, 7, 'ACTIVE', 'UTC', true, true, 'OMAR'),
+  ('d0000000-0000-0000-0000-000000000004', '33333333-3333-3333-3333-333333333333', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'steps', 'Zed', '{}'::jsonb, repeat('d',64), 2000, 'USD', 5, 7, 'ACTIVE', 'UTC', true, true, 'ZED');
+insert into public.pact_days (pact_id, day_index, date_local, status)
+select id, 0, current_date, 'PENDING' from public.pacts where pool_id = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+update public.pact_days set status = 'PASSED' where pact_id = 'd0000000-0000-0000-0000-000000000001';
+select is(public.advance_demo_day('dddddddd-dddd-dddd-dddd-dddddddddddd'), 0, 'demo advances exactly one simulated day');
+select is((select status::text from public.pact_days where pact_id = 'd0000000-0000-0000-0000-000000000001'), 'PASSED', 'demo preserves the owner real proof');
+select is((select status::text from public.pact_days where pact_id = 'd0000000-0000-0000-0000-000000000002'), 'PASSED', 'Mia simulated day passes');
+select is((select status::text from public.pact_days where pact_id = 'd0000000-0000-0000-0000-000000000003'), 'MISSED', 'Omar simulated day misses');
+select is((select count(*) from public.pact_days where pact_id = 'd0000000-0000-0000-0000-000000000001' and demo_simulated), 0::bigint, 'real owner proof is not labelled simulated');
+select is((select count(*) from public.pact_days where pact_id in ('d0000000-0000-0000-0000-000000000002','d0000000-0000-0000-0000-000000000003','d0000000-0000-0000-0000-000000000004') and demo_simulated), 3::bigint, 'each peer outcome is labelled simulated');
+select is((select demo_advanced_days from public.pools where id = 'dddddddd-dddd-dddd-dddd-dddddddddddd'), 1, 'demo day counter advances atomically');
+
+insert into public.pacts
+  (id, user_id, goal_type, title, rule_spec, rule_hash, stake_cents, currency,
+   required_passes, days, status, tz)
+values ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', '22222222-2222-2222-2222-222222222222', 'steps', 'Elapsed day', '{}'::jsonb,
+        repeat('e', 64), 2000, 'USD', 5, 7, 'ACTIVE', 'UTC');
+insert into public.pact_days (pact_id, day_index, date_local, status)
+values ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 0, current_date - 1, 'PENDING'),
+       ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 1, current_date - 1, 'PENDING');
+create temporary table phase9_expected_closed_days (count integer) on commit drop;
+insert into phase9_expected_closed_days
+select count(*)::integer from public.pact_days d join public.pacts p on p.id = d.pact_id
+where p.status = 'ACTIVE' and p.is_demo = false and d.status = 'PENDING'
+  and d.date_local < (now() at time zone p.tz)::date;
+select is(public.close_elapsed_days(now()), (select count from phase9_expected_closed_days), 'cron counts closed days, not affected pacts');
+select is((select count(*) from public.pact_days where pact_id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee' and status = 'MISSED'), 2::bigint, 'cron closes every overdue row for a pact');
+select is((select vitality from public.pacts where id = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee'), 0::double precision, 'missed day decreases vitality without going below zero');
+
 insert into public.pacts
   (id, user_id, goal_type, title, rule_spec, rule_hash, stake_cents, currency,
    required_passes, days, status, tz)

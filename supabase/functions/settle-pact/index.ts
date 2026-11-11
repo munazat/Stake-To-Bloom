@@ -58,7 +58,7 @@ const handler = async (request: Request) => {
   const charity = Deno.env.get('PAYPAL_CHARITY_EMAIL') ?? null
   const existing = await admin
     .from('settlements')
-    .select('id')
+    .select('id,plan_hash,sender_batch_id,payout_batch_id,status')
     .eq(pactRow.pool_id ? 'pool_id' : 'pact_id', pactRow.pool_id ?? id)
     .maybeSingle()
   if (existing.error) throw new Error('check prior settlement failed')
@@ -96,6 +96,20 @@ const handler = async (request: Request) => {
   const computedRules = await Promise.all(
     rows.map((r: any) => ruleHash(r.rule_spec).then((h) => h === r.rule_hash)),
   )
+  const retry =
+    pactRow.status === 'NEEDS_REVIEW' && existing.data
+      ? {
+          planHash: existing.data.plan_hash,
+          batchId: existing.data.sender_batch_id ?? `bloom-settle-${id}`,
+          payoutSubmitted: Boolean(existing.data.payout_batch_id),
+        }
+      : null
+  if (retry?.payoutSubmitted)
+    throw new HttpError(
+      409,
+      'payout_needs_review',
+      'A payout was already submitted; review its status before retrying.',
+    )
   const guard = {
     settlementEnabled: true,
     paymentsEnabled: true,
@@ -114,7 +128,7 @@ const handler = async (request: Request) => {
       0,
     ),
     status: 'SETTLING',
-    hasEarlierPayout: !!existing.data,
+    hasEarlierPayout: Boolean(existing.data?.payout_batch_id),
     requiredDayCount: rows.length * 7,
     caller: (caller ?? 'owner') as 'cron' | 'admin' | 'owner',
     demoOwner: Boolean(userId && isDemo),
@@ -135,7 +149,8 @@ const handler = async (request: Request) => {
           status: pactRow.status,
           settlementEnabled: true,
           paymentsEnabled: true,
-          payoutExists: !!existing.data,
+          payoutExists: Boolean(existing.data?.payout_batch_id),
+          retry,
           input: {
             members: rows.map((r: any) => ({
               pactId: r.id,
@@ -153,14 +168,19 @@ const handler = async (request: Request) => {
         }
       },
       async savePlan(pactId, plan, hash, batchId) {
-        const { error } = await admin.from('settlements').insert({
-          pact_id: pactRow.pool_id ? null : pactId,
-          pool_id: pactRow.pool_id,
-          plan,
-          plan_hash: hash,
-          sender_batch_id: batchId,
-          status: 'PLANNED',
-        })
+        const { error } = retry
+          ? await admin
+              .from('settlements')
+              .update({ status: 'PLANNED' })
+              .eq('id', existing.data!.id)
+          : await admin.from('settlements').insert({
+              pact_id: pactRow.pool_id ? null : pactId,
+              pool_id: pactRow.pool_id,
+              plan,
+              plan_hash: hash,
+              sender_batch_id: batchId,
+              status: 'PLANNED',
+            })
         if (error) throw new Error('save settlement plan failed')
       },
       async markReview(_id, hash) {
