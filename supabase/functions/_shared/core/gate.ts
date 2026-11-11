@@ -41,6 +41,32 @@ const INJECTION_PATTERNS: RegExp[] = [
   /\bjson\b/i,
 ]
 
+/** The first injection-looking fragment in `text`, or null. */
+export function injectionMatch(text: string): string | null {
+  for (const re of INJECTION_PATTERNS) {
+    const m = re.exec(text)
+    if (m) return m[0]
+  }
+  return null
+}
+
+/**
+ * Does the visible evidence text actually contain this number?
+ *
+ * Whole-number match, not substring: "482" must not be "found" inside
+ * "10,482". Each run of digits (with thousands separators such as "," or a thin
+ * space, or a decimal point) is read both as an integer with separators removed
+ * and as a decimal, and must equal the value exactly.
+ */
+export function evidenceSupports(evidenceText: string, value: number): boolean {
+  const tokens = evidenceText.match(/\d(?:[\d,.'   ]*\d)?/g) ?? []
+  return tokens.some((token) => {
+    const integerReading = Number(token.replace(/[^\d]/g, ''))
+    const decimalReading = Number(token.replace(/[,'   ]/g, ''))
+    return integerReading === value || decimalReading === value
+  })
+}
+
 function compare(value: number, comparator: '>=' | '<=' | '==', threshold: number): boolean {
   switch (comparator) {
     case '>=':
@@ -69,7 +95,7 @@ export function gate(
 
   // 2. Prompt-injection: model flag OR server-side regex over the transcript.
   const transcript = observation.transcript ?? ''
-  if (observation.injectionDetected || INJECTION_PATTERNS.some((re) => re.test(transcript))) {
+  if (observation.injectionDetected || injectionMatch(transcript) !== null) {
     const quote = observation.injectionQuote ? ` ("${observation.injectionQuote}")` : ''
     return {
       status: 'REJECTED',
@@ -155,16 +181,18 @@ export function gate(
         reasons.push(`Couldn't read a number for "${check.description}".`)
         continue
       }
+      // Anti-hallucination, checked BEFORE the comparator: a number the model
+      // cannot point to in visible text is not evidence of anything — including
+      // of failure. Checking it second would let a hallucinated low reading
+      // cost the user the day, which is exactly what invariant I8 forbids.
+      if (!evidenceSupports(obs.evidenceText ?? '', value)) {
+        anyUnclear = true
+        reasons.push(`The value ${value} for "${check.description}" wasn't backed by visible text.`)
+        continue
+      }
       if (!compare(value, check.comparator!, check.threshold!)) {
         anyFail = true
         reasons.push(`"${check.description}": saw ${value}, needed ${check.comparator} ${check.threshold}${check.unit ? ` ${check.unit}` : ''}.`)
-        continue
-      }
-      // Anti-hallucination: the number must actually appear in the visible text.
-      const evidence = (obs.evidenceText ?? '').replace(/[,\s]/g, '')
-      if (!evidence.includes(String(value))) {
-        anyUnclear = true
-        reasons.push(`The value ${value} for "${check.description}" wasn't backed by visible text.`)
         continue
       }
       reasons.push(`"${check.description}": ${value} ${check.comparator} ${check.threshold} ✓`)

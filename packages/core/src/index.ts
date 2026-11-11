@@ -15,7 +15,7 @@
  * NOTE: relative imports inside this package carry explicit `.ts` extensions —
  * Deno requires it.
  */
-export const CORE_VERSION = '0.2.0'
+export const CORE_VERSION = '0.3.0'
 
 export * from './money.ts'
 export * from './dates.ts'
@@ -24,4 +24,5 @@ export * from './schemas.ts'
 export * from './templates.ts'
 export * from './rules.ts'
 export * from './gate.ts'
+export * from './prompt.ts'
 export * from './garden.ts'
