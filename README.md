@@ -1,143 +1,119 @@
 # BloomStake
 
-> **Sandbox Mode — No Real Money.** BloomStake is a hackathon demo. All payments
-> run against the **PayPal Sandbox** only; the app refuses to move money outside
-> `api-m.sandbox.paypal.com`.
+> **Sandbox prototype — no real money.** PayPal is restricted to its sandbox host. The guided demo uses simulated stakes and does not call PayPal.
 
-Put real skin in the game for your daily wellness goals. Lock a stake, upload
-daily photo/screenshot proof, and let an **AI vision referee** (which only
-*perceives* — never decides money) feed a **deterministic rule engine** that
-settles payouts. Your 2.5D garden **blooms** on verified days and **wilts** when
-you miss them.
+BloomStake makes a seven-day wellness goal visible and accountable. A user commits a stake to a pact, submits daily screenshot/photo evidence, and watches a garden respond to verified days. **Gemini only extracts observations; a deterministic gate decides the verdict, and a deterministic settlement engine plans every cent. AI never moves money.**
 
-**AI never moves money.** The model extracts observations as data; only `gate()`
-interprets them and only `settle()` plans a payout, guarded by strict invariants.
+## Project status
 
----
+Phases 1–9 are implemented, locally verified, and pushed. Phase 10's local delivery materials are included; hosted Supabase wiring, live PayPal sandbox acceptance, Cloudflare Pages deployment, screenshots, device checks, and submission still require owner-controlled accounts or devices. The app is not yet a live public demo.
 
-## Status
+| Capability                                             | Status                                                 |
+| ------------------------------------------------------ | ------------------------------------------------------ |
+| Rule Contract, evidence pipeline, garden, audit feed   | Implemented                                            |
+| PayPal sandbox stake, payout, and refund flows         | Implemented; no sandbox acceptance run in this session |
+| Deterministic payout guard and settlement receipt      | Implemented                                            |
+| Guided demo with clearly labelled simulated peers/days | Implemented; migration is in `main`                    |
+| Hosted deployment and public demo                      | Pending owner setup                                    |
 
-**Phases 1–5 landed.** This is an in-progress build for the
-[PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). See the phase list
-below; the README grows as each phase lands.
+## Safety and privacy
 
-What works today: the shared money engine and rule schemas (`packages/core`), the
-Postgres schema with RLS, triggers and compare-and-set status transitions, the
-three-step pact wizard that locks a Rule Contract, and the living 2.5D garden at
-`/garden`. Creating a pact hashes the rule server-side and stores it frozen — the
-database then rejects any later edit to the rule, the hash or the stake. The
-garden reads vitality from the database (the server owns it, the client never
-recomputes it), renders a procedural plant in WebGL, falls back to an equivalent
-SVG when WebGL is unavailable or lost, and updates through Realtime without a
-reload. The AI proof referee is next.
+- Sandbox only. Functions reject non-sandbox PayPal hosts. Payment and settlement kill switches default off.
+- Money amounts and recipients come from database rows and verified PayPal captures, never from the browser.
+- The AI referee returns observations only. `gate()` makes proof decisions and `settle()` computes payouts.
+- **Demo uses sandbox money. Do not upload personal photos. Images are processed by Google’s Gemini API under its free-tier terms, which may allow review and product improvement.** Browser-generated sample proofs avoid sending a personal image.
+- Simulated demo stakes/days are labelled and never become PayPal payouts.
+- A real launch would require payments/gambling-law review and PayPal policy approval.
 
-## Stack (all free tier)
+## Architecture
 
-| Layer | Choice |
-| --- | --- |
-| Language | TypeScript everywhere |
-| Frontend | Vite + React 19 + React Router + TanStack Query + Tailwind CSS v4 |
-| Garden | three + @react-three/fiber (procedural geometry, no external assets) + SVG fallback |
-| Backend | Supabase (Postgres + RLS, Auth, Storage, Realtime, Deno Edge Functions) |
-| Validation | zod (shared between web, core, and functions) |
-| AI | Google Gemini (free tier) via a model chain |
-| Payments | PayPal REST (Sandbox): Orders v2, Webhooks, Payouts, Refunds |
-| Tests | Vitest + fast-check (core), Testing Library (web), pgTAP (DB invariants), `deno check` (functions); Playwright planned |
-| Hosting | Cloudflare Pages (`*.pages.dev`), static SPA |
+```mermaid
+flowchart LR
+  Web[React SPA] -->|verified user session| Edge[Supabase Edge Functions]
+  Edge --> DB[(Postgres + RLS)]
+  Edge --> Storage[(Private proof storage)]
+  Edge --> Gemini[Gemini observations]
+  Gemini --> Gate[Deterministic gate]
+  Gate --> DB
+  Edge --> Settle[Deterministic settle + payout guard]
+  Settle -->|sandbox only| PayPal[PayPal Sandbox]
+  PayPal -->|verified webhook / polling| Edge
+```
+
+## Stack
+
+| Layer           | Technology                                                          |
+| --------------- | ------------------------------------------------------------------- |
+| Web             | React 19, Vite, React Router, TanStack Query, Tailwind CSS v4       |
+| Garden          | Three.js + React Three Fiber procedural geometry, SVG fallback      |
+| Backend         | Supabase Postgres/RLS, Auth, Storage, Realtime, Deno Edge Functions |
+| Validation/core | TypeScript, Zod, property-tested deterministic rules                |
+| AI              | Google Gemini model chain; observations are untrusted input         |
+| Payments        | PayPal REST sandbox: Orders, Webhooks, Payouts, Refunds             |
+| Tests           | Vitest, Testing Library, fast-check, Deno tests, pgTAP              |
 
 ## Repository layout
 
+```text
+apps/web/                 Vite SPA, route UI, browser tests
+packages/core/            Pure shared rules, gate, settlement, schemas, dates
+supabase/migrations/      Schema, RLS, functions, Phase 8/9 migrations
+supabase/functions/       Authenticated Edge Functions and webhook handlers
+supabase/tests/           pgTAP invariants and database acceptance checks
+scripts/                  Core sync and Deno verification helpers
+.github/workflows/        CI and secret-configured operations schedule
 ```
-bloomstake/
-  apps/web/            Vite + React SPA (static; public/_redirects for SPA routing)
-    src/lib/           config.ts (env, no deps), supabase.ts (client),
-                       session.ts (anonymous guest session), api.ts (typed calls),
-                       garden.ts (plot query + Realtime subscription)
-    src/garden/        visuals.ts (one shared look model), capabilities.ts,
-                       Plant3D.tsx, Scene3D.tsx (lazy), PlantSVG.tsx (fallback),
-                       GardenPlot.tsx (chooses the renderer)
-    src/routes/        Landing.tsx, PactNew.tsx (3-step wizard), Garden.tsx
-    tests/             Vitest + Testing Library
-  packages/core/       pure TypeScript: rules.ts (settle), gate.ts, schemas.ts,
-                       templates.ts, hash.ts, money.ts, dates.ts, garden.ts
-                       (vitality + stage)  (zod only, no I/O)
-  supabase/
-    migrations/        numbered .sql (schema, RLS, functions, triggers, storage)
-    tests/             pgTAP acceptance tests (RLS, transitions, freeze, ledger)
-    functions/         Deno Edge Functions
-      pact-create/     wizard choices -> frozen RuleSpec + rule_hash
-      _shared/         http.ts, auth.ts, cors.ts, core/ (synced copy of packages/core)
-                       planned: paypal.ts, gemini.ts, guard.ts, prompt.ts
-  scripts/             sync-core.mjs, check-functions.mjs
-  .github/workflows/   ci.yml  (planned: keepalive.yml)
-```
-
-> **Edge Function bundling pitfall:** functions can only bundle files under
-> `supabase/functions`. `scripts/sync-core.mjs` copies `packages/core` into
-> `supabase/functions/_shared/core`. Core imports carry explicit `.ts`
-> extensions (Deno requires it).
 
 ## Local development
 
-```bash
-npm install
-npm run dev          # start the web SPA (http://localhost:5173)
-npm run test         # run unit/property tests across workspaces
-npm run typecheck    # tsc --noEmit across the Node workspaces
-npm run build        # production build of the web SPA
-
-npm run sync-core    # re-copy packages/core into supabase/functions/_shared/core
-npm run check:functions   # deno check the Edge Functions (needs Deno 2 on PATH)
-```
-
-The Edge Functions run under Deno, so `npm run typecheck` does not cover them —
-they use `npm:` specifiers and `.ts`-suffixed relative imports. `check:functions`
-needs [Deno](https://deno.land) installed, or `DENO_BIN` pointed at a binary; it
-fails loudly if Deno is missing rather than silently passing.
-
-For the full local stack (Supabase CLI + Docker):
+Requirements: Node.js 24, Deno 2, and Docker (for the local Supabase stack).
 
 ```bash
-supabase start       # Postgres, auth, storage, Kong API on :54321
-supabase db reset    # re-apply every migration from scratch
-supabase test db     # pgTAP acceptance tests (RLS, transitions, freeze, ledger)
-supabase functions serve   # Edge Functions with stdout logs
+npm ci
+cp .env.example .env       # set only local/public web values; never commit .env
+npm run dev
 ```
 
-Copy `.env.example` to a local `.env` (never committed) for the web build vars.
-Edge Function secrets are set with `supabase secrets set` — never in git.
+For Supabase functions and database tests:
 
-## Build phases
+```bash
+supabase start
+supabase migration up
+supabase functions serve
+npm run check:functions
+npm run test:functions
+supabase test db
+```
 
-1. ✅ **Monorepo scaffold**
-2. ✅ `packages/core` money engine (`settle`, `money`, `dates`, `schemas`, property tests)
-3. ✅ Supabase schema, RLS, migrations, triggers
-4. ✅ Pact creation flow + Rule Contract (locked `rule_hash`)
-5. ✅ **Living 2.5D garden (React Three Fiber) + SVG fallback**
-6. AI proof referee (`gemini`, `gate`, injection defence, sample-proof generator) ← current
-7. PayPal money-IN (Orders v2 + webhooks + audit feed)
-8. PayPal money-OUT (Payouts, settlement guard, refunds, receipt)
-9. Judge demo mode + ops hardening (demo-advance, cron, keep-alive, kill switches)
-10. Deploy + docs + video + Devpost submission
+The demo needs Supabase for guest sessions, but its four stakes are simulated and it makes no PayPal calls. Mia, Omar, and Zed have deterministic outcomes; simulated days call neither Gemini nor PayPal. The owner's first proof still uses the configured proof referee. `/admin` exposes health and retry controls only when an operator enters the secret at runtime; the secret is never part of the frontend build.
 
-> **Phase 4 scope note:** the wizard creates pacts from the four built-in goal
-> templates. A free-text *custom* goal needs the AI drafter from Phase 6 to turn
-> prose into checkable rules, so that tile is shown as unavailable rather than
-> half-wired — it is sequencing, not a dropped feature.
+The root `.env.example` documents variable names. Web `VITE_*` values are public build-time settings. PayPal/Gemini/admin/cron secrets belong in the local Supabase function environment or Supabase secrets, never in the repository. `VITE_PAYMENTS_ADAPTER=mock` and `PAYMENTS_ADAPTER=mock` are local-only; production builds/functions reject mock payments on hosted projects.
 
-## Disclosures
+Quality checks:
 
-- **Sandbox only.** No real money is moved. Simulated pool peers are labelled
-  "demo player"; forfeits route to a clearly labelled sandbox charity account.
-- **AI privacy.** Demo proof images are generated in-browser. Do not upload
-  personal photos. Images are processed by Google's Gemini API under its
-  free-tier terms, which may allow review and product improvement.
-- **Reuse.** Design patterns (layout, tokens, Gemini-wrapper and rate-limit
-  ideas) are informed by the author's earlier *Health Garden* project; **all code
-  in this repository was written after 1 Oct 2026.**
-- **Legal.** This is a skill-based commitment contract in a sandbox. A real
-  launch would require payments/gambling-law review and PayPal policy approval.
+```bash
+npm run typecheck
+npm test
+npm run check:functions
+npm run test:functions
+npm run build
+supabase test db
+```
 
-## License
+## Demo
 
-MIT — see [LICENSE](./LICENSE).
+Open `/demo`, start the guided demo, and open the owner pact in the garden. Submit the browser-generated sample proof first. Then use the fast-forward control: Mia’s remaining days pass; Omar’s and Zed’s miss. The simulated days are marked in the timeline and make no AI or money call. Clearing site data loses this guest demo garden.
+
+The garden respects `prefers-reduced-motion`, supports a low-cost `?lite=1` renderer, and falls back to accessible SVG when WebGL is unavailable. Validate the target browsers and devices against the checklist before calling the hosted app accepted.
+
+## Deployment status
+
+Hosted Supabase project reference: `jcooxuagqgapjfedhdpz` (created, not yet wired from this workspace). Deployment is intentionally pending until the owner supplies the hosted project configuration privately and the PayPal sandbox checklist is complete. See [`docs/phase10-runbook.md`](docs/phase10-runbook.md) for the exact remaining steps. Never put private keys, passwords, buyer credentials, or webhook secrets in this README or Devpost text.
+
+The `keepalive.yml` workflow calls the hourly maintenance endpoint and daily health check after `SUPABASE_PROJECT_URL` and `CRON_SECRET` are configured in GitHub Actions. Without both secrets it reports a visible skip; that no-op does not count as live acceptance. The Phase 10 submission checklist and 2:45 recording outline are in `docs/`.
+
+## Attribution and license
+
+Design patterns (layout, tokens, Gemini-wrapper and rate-limit ideas) are informed by the author’s earlier [Health Garden project](https://github.com/Shahoud867/health-garden-app). BloomStake’s money, AI gate, and settlement code are written for this repository. The code in this repository was written after 1 Oct 2026.
+
+MIT License — see [LICENSE](LICENSE).
