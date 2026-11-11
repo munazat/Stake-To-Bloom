@@ -5,18 +5,21 @@ import { CAPTURE, completedOrder, fakeFunding, pactRow, unpaidOrder } from './te
 
 const pact = pactRow()
 
-Deno.test('I3: a matching COMPLETED capture validates and yields the payer from the response', () => {
-  const r = validateCapture(pact, completedOrder())
-  assert.equal(r.kind, 'ok')
-  if (r.kind === 'ok') {
-    assert.deepEqual(r.capture, {
-      captureId: CAPTURE,
-      amountCents: 2000,
-      payerEmail: 'buyer@example.com',
-      payerId: 'PAYER1',
-    })
-  }
-})
+Deno.test(
+  'I3: a matching COMPLETED capture validates and yields the payer from the response',
+  () => {
+    const r = validateCapture(pact, completedOrder())
+    assert.equal(r.kind, 'ok')
+    if (r.kind === 'ok') {
+      assert.deepEqual(r.capture, {
+        captureId: CAPTURE,
+        amountCents: 2000,
+        payerEmail: 'buyer@example.com',
+        payerId: 'PAYER1',
+      })
+    }
+  },
+)
 
 Deno.test('I3: every mismatch is refused', () => {
   const cases: Array<[string, ReturnType<typeof completedOrder>]> = [
@@ -28,7 +31,8 @@ Deno.test('I3: every mismatch is refused', () => {
     ['order not completed', completedOrder({ orderStatus: 'APPROVED' })],
     ['another order id', completedOrder({ orderId: 'SOMEONE-ELSES-ORDER' })],
   ]
-  for (const [label, order] of cases) assert.equal(validateCapture(pact, order).kind, 'mismatch', label)
+  for (const [label, order] of cases)
+    assert.equal(validateCapture(pact, order).kind, 'mismatch', label)
 })
 
 Deno.test('a PENDING capture or an unpaid order is "pending", never funded', () => {
@@ -40,7 +44,10 @@ Deno.test('payee is checked only when configured, and must match when it is', ()
   assert.equal(validateCapture(pact, completedOrder(), { merchantId: 'MERCHANT1' }).kind, 'ok')
   assert.equal(validateCapture(pact, completedOrder(), { merchantId: 'OTHER' }).kind, 'mismatch')
   assert.equal(validateCapture(pact, completedOrder(), { email: 'SHOP@example.com' }).kind, 'ok')
-  assert.equal(validateCapture(pact, completedOrder(), { email: 'thief@example.com' }).kind, 'mismatch')
+  assert.equal(
+    validateCapture(pact, completedOrder(), { email: 'thief@example.com' }).kind,
+    'mismatch',
+  )
 })
 
 Deno.test('dayDates: 7 consecutive local dates in the pact zone', () => {
@@ -78,6 +85,24 @@ Deno.test('fundPact: running it twice does not double the ledger (I4)', async ()
   assert.deepEqual(second, { funded: true, alreadyFunded: true })
   assert.equal(db.ledger.length, 1)
 })
+
+Deno.test(
+  'fundPact: a pact that moved before capture persistence writes no ledger or days',
+  async () => {
+    const db = fakeFunding()
+    db.saveCaptureResult = { kind: 'wrong_status', status: 'EXPIRED' }
+    const result = await fundPact(
+      db,
+      pact,
+      { captureId: CAPTURE, amountCents: 2000, payerEmail: null, payerId: null },
+      new Date(),
+    )
+    assert.deepEqual(result, { funded: false, reason: 'wrong_status', status: 'EXPIRED' })
+    assert.deepEqual(db.calls, ['saveCapture'])
+    assert.equal(db.ledger.length, 0)
+    assert.equal(db.days.length, 0)
+  },
+)
 
 Deno.test('fundPact: an ACTIVE pact is a no-op; an EXPIRED pact is not funded', async () => {
   const db = fakeFunding()

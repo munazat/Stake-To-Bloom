@@ -45,7 +45,9 @@ export interface PayeeExpectation {
 
 const PENDING_ORDER_STATES = new Set(['CREATED', 'SAVED', 'APPROVED', 'PAYER_ACTION_REQUIRED'])
 
-function firstCapture(order: PaypalOrder): { unit: PaypalOrder['purchase_units'][number]; capture: PaypalCapture } | null {
+function firstCapture(
+  order: PaypalOrder,
+): { unit: PaypalOrder['purchase_units'][number]; capture: PaypalCapture } | null {
   for (const unit of order.purchase_units) {
     const capture = unit.payments?.captures?.[0]
     if (capture) return { unit, capture }
@@ -112,7 +114,9 @@ export function validateCapture(
 /** The 7 local calendar dates of a pact, starting on the local day of `startsAt`. */
 export function dayDates(startsAt: Date, tz: string): string[] {
   const [y, m, d] = localDateKey(startsAt, tz).split('-').map(Number)
-  return Array.from({ length: PACT_DAYS }, (_, i) => new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10))
+  return Array.from({ length: PACT_DAYS }, (_, i) =>
+    new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10),
+  )
 }
 
 export interface FundingDb {
@@ -127,9 +131,14 @@ export interface FundingDb {
       funded_at: string
       vitality: number
     },
-  ): Promise<void>
+  ): Promise<
+    { kind: 'saved' } | { kind: 'already_active' } | { kind: 'wrong_status'; status: string }
+  >
   addLedger(pactId: string, captureId: string, cents: number): Promise<void>
-  addDays(pactId: string, days: Array<{ pact_id: string; day_index: number; date_local: string }>): Promise<void>
+  addDays(
+    pactId: string,
+    days: Array<{ pact_id: string; day_index: number; date_local: string }>,
+  ): Promise<void>
   /** AWAITING_STAKE -> ACTIVE. 'raced' means someone else got there first. */
   activate(pactId: string): Promise<'moved' | 'raced'>
 }
@@ -147,10 +156,11 @@ export async function fundPact(
   now: Date,
 ): Promise<FundResult> {
   if (pact.status === 'ACTIVE') return { funded: true, alreadyFunded: true }
-  if (pact.status !== 'AWAITING_STAKE') return { funded: false, reason: 'wrong_status', status: pact.status }
+  if (pact.status !== 'AWAITING_STAKE')
+    return { funded: false, reason: 'wrong_status', status: pact.status }
 
   const dates = dayDates(now, pact.tz)
-  await db.saveCapture(pact.id, {
+  const saved = await db.saveCapture(pact.id, {
     paypal_capture_id: capture.captureId,
     payer_email: capture.payerEmail,
     payer_id: capture.payerId,
@@ -159,6 +169,10 @@ export async function fundPact(
     funded_at: now.toISOString(),
     vitality: SEED_VITALITY,
   })
+  if (saved.kind === 'already_active') return { funded: true, alreadyFunded: true }
+  if (saved.kind === 'wrong_status') {
+    return { funded: false, reason: 'wrong_status', status: saved.status }
+  }
   await db.addLedger(pact.id, capture.captureId, capture.amountCents)
   await db.addDays(
     pact.id,
@@ -177,8 +191,29 @@ export function supabaseFundingDb(admin: any): FundingDb {
   }
   return {
     async saveCapture(pactId, fields) {
-      const { error } = await admin.from('pacts').update(fields).eq('id', pactId).eq('status', 'AWAITING_STAKE')
+      const { data, error } = await admin
+        .from('pacts')
+        .update(fields)
+        .eq('id', pactId)
+        .eq('status', 'AWAITING_STAKE')
+        .select('id')
+        .maybeSingle()
       if (error) fail('save capture', error)
+      if (data) return { kind: 'saved' }
+
+      // A concurrent capture may have completed funding after our caller loaded
+      // the pact. Treat only that exact capture as idempotent; an EXPIRED or
+      // otherwise moved pact must not acquire ledger/day rows from this call.
+      const { data: current, error: readError } = await admin
+        .from('pacts')
+        .select('status,paypal_capture_id')
+        .eq('id', pactId)
+        .maybeSingle()
+      if (readError) fail('verify funding state', readError)
+      if (current?.status === 'ACTIVE' && current.paypal_capture_id === fields.paypal_capture_id) {
+        return { kind: 'already_active' }
+      }
+      return { kind: 'wrong_status', status: current?.status ?? 'NOT_FOUND' }
     },
     async addLedger(pactId, captureId, cents) {
       const { error } = await admin
@@ -188,7 +223,9 @@ export function supabaseFundingDb(admin: any): FundingDb {
       if (error && error.code !== '23505') fail('write ledger', error)
     },
     async addDays(_pactId, days) {
-      const { error } = await admin.from('pact_days').upsert(days, { onConflict: 'pact_id,day_index', ignoreDuplicates: true })
+      const { error } = await admin
+        .from('pact_days')
+        .upsert(days, { onConflict: 'pact_id,day_index', ignoreDuplicates: true })
       if (error) fail('create days', error)
     },
     async activate(pactId) {
