@@ -10,6 +10,7 @@ const handler = async (request: Request) => {
   if (!token || !(token === cron || token === adminSecret))
     throw new HttpError(401, 'unauthorized', 'A valid operations secret is required.')
   const admin = serviceClient()
+  const hosted = looksHosted(Deno.env.get('SUPABASE_URL'))
   const checks: Record<string, string> = {}
   try {
     assertSandbox()
@@ -23,20 +24,38 @@ const handler = async (request: Request) => {
     .in('key', ['payments_enabled', 'settlement_enabled', 'ai_enabled'])
   if (error) checks.config = 'unavailable'
   else checks.config = 'readable'
-  if (Deno.env.get('PAYMENTS_ADAPTER') === 'mock' && looksHosted(Deno.env.get('SUPABASE_URL')))
+  const configByKey = new Map((config ?? []).map((row: any) => [row.key, row.value]))
+  if (hosted) {
+    const required = [
+      'CRON_SECRET',
+      'ADMIN_SECRET',
+      'RATE_LIMIT_SALT',
+      'PAYPAL_CLIENT_ID',
+      'PAYPAL_CLIENT_SECRET',
+      'PAYPAL_WEBHOOK_ID',
+      'PAYPAL_CHARITY_EMAIL',
+      'ALLOWED_ORIGINS',
+    ]
+    if (configByKey.get('ai_enabled') === true)
+      required.push('GEMINI_API_KEY', 'GEMINI_MODEL_CHAIN')
+    const missing = required.filter((name) => !Deno.env.get(name))
+    checks.requiredSecrets = missing.length ? `missing: ${missing.join(', ')}` : 'configured'
+  } else checks.requiredSecrets = 'local runtime'
+  if (Deno.env.get('PAYMENTS_ADAPTER') === 'mock' && hosted)
     checks.paymentAdapter = 'invalid mock-on-hosted configuration'
   else
     checks.paymentAdapter =
       Deno.env.get('PAYMENTS_ADAPTER') === 'mock' ? 'local mock' : 'sandbox adapter'
 
+  const aiEnabled = configByKey.get('ai_enabled') === true
   const mockGemini = Deno.env.get('GEMINI_ADAPTER') === 'mock'
   const key = Deno.env.get('GEMINI_API_KEY')
   const models = (Deno.env.get('GEMINI_MODEL_CHAIN') ?? '')
     .split(',')
     .map((m) => m.trim())
     .filter(Boolean)
-  if (mockGemini && !looksHosted(Deno.env.get('SUPABASE_URL')))
-    checks.gemini = 'local mock (model health not exercised)'
+  if (!aiEnabled) checks.gemini = 'disabled by ai_enabled switch'
+  else if (mockGemini && !hosted) checks.gemini = 'local mock (model health not exercised)'
   else if (!key || !models.length) checks.gemini = 'model key or model chain missing'
   else {
     const response = await fetch(
