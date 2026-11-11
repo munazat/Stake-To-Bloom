@@ -163,3 +163,40 @@ export async function submitProof(pactId: string, storagePath: string): Promise<
     throw new ApiError(502, { code: 'bad_response', message: 'Unexpected server response.' })
   return proof
 }
+
+// ---------------------------------------------------------------------------
+// Payments (stake in)
+// ---------------------------------------------------------------------------
+
+/**
+ * Ask the server for the PayPal order that funds this pact. The amount is the
+ * server's, read from the pact row; the browser sends only the pact id (I2).
+ */
+export async function createStakeOrder(pactId: string): Promise<string> {
+  const payload = await post('paypal-create-order', { pact_id: pactId })
+  const id = (payload as { order_id?: unknown } | null)?.order_id
+  if (typeof id !== 'string' || id === '')
+    throw new ApiError(502, { code: 'bad_response', message: 'Unexpected server response.' })
+  return id
+}
+
+export interface CaptureOutcome {
+  status: 'ACTIVE' | 'AWAITING_STAKE'
+  funded: boolean
+  pending?: boolean
+}
+
+/**
+ * "capture" settles an approved order; "check" only reads it, so the pact page can
+ * heal a stake whose capture succeeded but whose confirmation was lost.
+ */
+export async function captureStakeOrder(
+  orderId: string,
+  mode: 'capture' | 'check' = 'capture',
+): Promise<CaptureOutcome> {
+  const payload = await post('paypal-capture-order', { order_id: orderId, mode })
+  const out = payload as CaptureOutcome | null
+  if (!out || typeof out.funded !== 'boolean')
+    throw new ApiError(502, { code: 'bad_response', message: 'Unexpected server response.' })
+  return out
+}

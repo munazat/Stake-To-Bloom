@@ -48,6 +48,7 @@ export interface PactDetail {
   ruleHash: string
   spec: RuleSpec
   paypalOrderId: string | null
+  payerEmail: string | null
   dayRows: PactDay[]
   proofs: ProofRecord[]
 }
@@ -67,6 +68,7 @@ interface PactRow {
   rule_hash: string
   rule_spec: unknown
   paypal_order_id: string | null
+  payer_email: string | null
   pact_days: Array<{ day_index: number; date_local: string; status: DayStatus }> | null
 }
 
@@ -81,7 +83,7 @@ interface ProofRow {
 }
 
 const PACT_COLUMNS =
-  'id,title,status,vitality,stake_cents,currency,required_passes,days,tz,starts_at,is_demo,rule_hash,rule_spec,paypal_order_id,pact_days(day_index,date_local,status)'
+  'id,title,status,vitality,stake_cents,currency,required_passes,days,tz,starts_at,is_demo,rule_hash,rule_spec,paypal_order_id,payer_email,pact_days(day_index,date_local,status)'
 
 export async function fetchPactDetail(id: string): Promise<PactDetail | null> {
   if (!supabase) return null
@@ -118,6 +120,7 @@ export async function fetchPactDetail(id: string): Promise<PactDetail | null> {
     ruleHash: row.rule_hash,
     spec: RuleSpecSchema.parse(row.rule_spec),
     paypalOrderId: row.paypal_order_id,
+    payerEmail: row.payer_email,
     dayRows: (row.pact_days ?? [])
       .map((d) => ({ dayIndex: d.day_index, dateLocal: d.date_local, status: d.status }))
       .sort((a, b) => a.dayIndex - b.dayIndex),

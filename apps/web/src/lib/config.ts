@@ -20,3 +20,18 @@ export const isSupabaseConfigured = supabaseUrl !== '' && supabaseAnonKey !== ''
 export function edgeFunctionUrl(name: string): string {
   return `${supabaseUrl.replace(/\/+$/, '')}/functions/v1/${name}`
 }
+
+/** The PayPal sandbox REST app's Client ID. Public by design; the secret never reaches the browser. */
+export const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID ?? ''
+
+/**
+ * "mock" swaps PayPal for a local stand-in (decision D12). It exists so the stake
+ * flow can be developed without sandbox credentials, and it must never ship:
+ * a production build that asks for it refuses to load.
+ */
+export const paymentsAdapter: 'paypal' | 'mock' =
+  import.meta.env.VITE_PAYMENTS_ADAPTER === 'mock' ? 'mock' : 'paypal'
+
+if (import.meta.env.PROD && paymentsAdapter === 'mock') {
+  throw new Error('VITE_PAYMENTS_ADAPTER=mock is for local development only and cannot be used in a production build.')
+}

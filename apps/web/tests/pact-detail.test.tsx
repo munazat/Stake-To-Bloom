@@ -9,6 +9,8 @@ vi.mock('../src/lib/config.ts', () => ({
   isSupabaseConfigured: true,
   supabaseUrl: 'http://x',
   supabaseAnonKey: 'k',
+  paymentsAdapter: 'mock',
+  paypalClientId: '',
   edgeFunctionUrl: (n: string) => `http://x/functions/v1/${n}`,
 }))
 vi.mock('../src/lib/garden.ts', () => ({ subscribeToPlots: async () => () => {} }))
@@ -16,6 +18,12 @@ const fetchPactDetail = vi.fn()
 vi.mock('../src/lib/pactDetail.ts', async (orig) => ({
   ...(await orig<typeof import('../src/lib/pactDetail.ts')>()),
   fetchPactDetail: (id: string) => fetchPactDetail(id),
+}))
+
+const captureStakeOrder = vi.fn()
+vi.mock('../src/lib/api.ts', async (orig) => ({
+  ...(await orig<typeof import('../src/lib/api.ts')>()),
+  captureStakeOrder: (id: string, mode: string) => captureStakeOrder(id, mode),
 }))
 
 import PactDetailRoute from '../src/routes/PactDetail.tsx'
@@ -39,6 +47,7 @@ function detail(overrides: Partial<PactDetail> = {}): PactDetail {
     ruleHash: 'a'.repeat(64),
     spec: stepsSpec(),
     paypalOrderId: null,
+    payerEmail: null,
     dayRows: Array.from({ length: 7 }, (_, i) => ({
       dayIndex: i,
       dateLocal: '2026-11-11',
@@ -62,7 +71,10 @@ function renderRoute() {
   )
 }
 
-beforeEach(() => fetchPactDetail.mockReset())
+beforeEach(() => {
+  fetchPactDetail.mockReset()
+  captureStakeOrder.mockReset()
+})
 
 describe('PactDetail', () => {
   it('shows the seven-day timeline with the verified day and the live status line', async () => {
@@ -133,6 +145,16 @@ describe('PactDetail', () => {
     renderRoute()
     expect(await screen.findByText(/waiting for its stake/i)).toBeInTheDocument()
     expect(screen.queryByLabelText('Upload proof image')).toBeNull()
+  })
+
+  it('reconciles an unfunded pact that already has an order, read-only', async () => {
+    fetchPactDetail.mockResolvedValue(
+      detail({ status: 'AWAITING_STAKE', startsAt: null, dayRows: [], paypalOrderId: 'ORDER-1' }),
+    )
+    captureStakeOrder.mockResolvedValue({ status: 'AWAITING_STAKE', funded: false, pending: true })
+    renderRoute()
+    await waitFor(() => expect(captureStakeOrder).toHaveBeenCalledWith('ORDER-1', 'check'))
+    expect(screen.getByRole('button', { name: /Stake \$20\.00/ })).toBeInTheDocument()
   })
 
   it('explains a missing pact instead of crashing', async () => {

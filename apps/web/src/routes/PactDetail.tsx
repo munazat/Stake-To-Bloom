@@ -11,7 +11,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatUsd, gardenStage } from '@bloomstake/core'
 import GardenPlot from '../garden/GardenPlot.tsx'
 import { SandboxBanner } from './Landing.tsx'
-import { ApiError, type ProofResult } from '../lib/api.ts'
+import { ApiError, captureStakeOrder, type ProofResult } from '../lib/api.ts'
+import { maskEmail } from '../lib/audit.ts'
+import StakeButton from './StakeButton.tsx'
 import { isSupabaseConfigured } from '../lib/config.ts'
 import { subscribeToPlots } from '../lib/garden.ts'
 import {
@@ -164,6 +166,25 @@ export default function PactDetailRoute() {
   }, [id, queryClient])
 
   const detail = detailQuery.data ?? null
+
+  // Reconcile on load: if a stake was captured at PayPal but our confirmation was
+  // lost (closed tab, crash), a read-only "check" heals the pact. It never charges.
+  const awaitingOrder = detail?.status === 'AWAITING_STAKE' ? detail.paypalOrderId : null
+  useEffect(() => {
+    if (!awaitingOrder) return
+    let cancelled = false
+    captureStakeOrder(awaitingOrder, 'check')
+      .then((out) => {
+        if (!cancelled && out.funded) void queryClient.invalidateQueries({ queryKey: ['pact', id] })
+      })
+      .catch(() => {
+        /* best effort: the Stake button and the webhook are the other paths */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [awaitingOrder, id, queryClient])
+
   const today = detail ? todayIndex(detail) : null
 
   const submit = useMutation({
@@ -253,10 +274,20 @@ export default function PactDetailRoute() {
             <Timeline detail={detail} today={today} />
 
             {detail.status === 'AWAITING_STAKE' && (
-              <p className="mt-5 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                This pact is waiting for its stake. Proofs open once the sandbox payment is
-                confirmed.
-              </p>
+              <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
+                <p>
+                  This pact is waiting for its stake. Proofs open once the sandbox payment is
+                  confirmed.
+                </p>
+                <StakeButton
+                  pactId={detail.id}
+                  stakeCents={detail.stakeCents}
+                  onFunded={() => {
+                    void queryClient.invalidateQueries({ queryKey: ['pact', id] })
+                    void queryClient.invalidateQueries({ queryKey: ['plots'] })
+                  }}
+                />
+              </section>
             )}
 
             {isActive && (
@@ -367,6 +398,15 @@ export default function PactDetailRoute() {
                 </ul>
               )}
             </section>
+
+            {detail.payerEmail && (
+              <p className="mt-6 text-xs text-slate-500">
+                Staked by PayPal account {maskEmail(detail.payerEmail)} ·{' '}
+                <Link to="/audit" className="text-emerald-700 hover:underline">
+                  PayPal audit feed
+                </Link>
+              </p>
+            )}
 
             <p className="mt-8 break-all text-xs text-slate-400">
               Rule contract hash (frozen at funding): <code>{detail.ruleHash}</code>

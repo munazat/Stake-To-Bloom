@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY?: string
   readonly VITE_PAYPAL_CLIENT_ID?: string
   readonly VITE_APP_ENV?: string
+  readonly VITE_PAYMENTS_ADAPTER?: string
 }
 
 interface ImportMeta {
