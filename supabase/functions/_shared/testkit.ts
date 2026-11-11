@@ -1,7 +1,7 @@
 /** Fakes shared by the payment tests. Never imported by a deployed function. */
 import type { AuditEvent, EventSink } from './events.ts'
 import type { FundingDb } from './funding.ts'
-import type { PaypalClient, PaypalOrder } from './paypal.ts'
+import type { PaypalClient, PaypalOrder, WebhookVerifyInput } from './paypal.ts'
 
 export const USER = '0a0a0a0a-0000-4000-8000-000000000001'
 export const OTHER = '0b0b0b0b-0000-4000-8000-000000000002'
@@ -69,6 +69,7 @@ export interface FakeFunding extends FundingDb {
   saved: Record<string, unknown>[]
   /** Result `activate` returns. */
   activateResult: 'moved' | 'raced'
+  saveCaptureResult: Awaited<ReturnType<FundingDb['saveCapture']>>
 }
 
 export function fakeFunding(): FakeFunding {
@@ -78,10 +79,11 @@ export function fakeFunding(): FakeFunding {
     ledger: [],
     saved: [],
     activateResult: 'moved',
+    saveCaptureResult: { kind: 'saved' },
     saveCapture(_id, fields) {
       f.calls.push('saveCapture')
       f.saved.push(fields)
-      return Promise.resolve()
+      return Promise.resolve(f.saveCaptureResult)
     },
     addLedger(_id, ref, cents) {
       f.calls.push('addLedger')
@@ -109,7 +111,8 @@ export function fakeEvents(): FakeEvents {
   const e: FakeEvents = {
     rows: [],
     record(row) {
-      if (row.eventId && e.rows.some((r) => r.eventId === row.eventId)) return Promise.resolve('duplicate')
+      if (row.eventId && e.rows.some((r) => r.eventId === row.eventId))
+        return Promise.resolve('duplicate')
       e.rows.push(row)
       return Promise.resolve('recorded')
     },
@@ -123,6 +126,7 @@ export interface FakePaypal extends PaypalClient {
   orderToReturn: PaypalOrder
   captureError: Error | null
   verifyResult: boolean | Error
+  verifyInputs: WebhookVerifyInput[]
 }
 
 export function fakePaypal(order: PaypalOrder = completedOrder()): FakePaypal {
@@ -132,6 +136,7 @@ export function fakePaypal(order: PaypalOrder = completedOrder()): FakePaypal {
     orderToReturn: order,
     captureError: null,
     verifyResult: true,
+    verifyInputs: [],
     createOrder(input) {
       p.calls.push(`create:${input.attempt}`)
       return Promise.resolve({ id: `NEW-ORDER-${input.attempt}`, status: 'CREATED' })
@@ -144,9 +149,12 @@ export function fakePaypal(order: PaypalOrder = completedOrder()): FakePaypal {
       p.calls.push('capture')
       return p.captureError ? Promise.reject(p.captureError) : Promise.resolve(p.orderToReturn)
     },
-    verifyWebhook() {
+    verifyWebhook(input) {
       p.calls.push('verify')
-      return p.verifyResult instanceof Error ? Promise.reject(p.verifyResult) : Promise.resolve(p.verifyResult)
+      p.verifyInputs.push(input)
+      return p.verifyResult instanceof Error
+        ? Promise.reject(p.verifyResult)
+        : Promise.resolve(p.verifyResult)
     },
   }
   return p

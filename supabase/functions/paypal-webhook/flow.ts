@@ -16,7 +16,12 @@
 import { usdStringToCents } from '../_shared/core/index.ts'
 import { HttpError, json } from '../_shared/http.ts'
 import type { EventSink } from '../_shared/events.ts'
-import { fundPact, validateCapture, type FundingDb, type PayeeExpectation } from '../_shared/funding.ts'
+import {
+  fundPact,
+  validateCapture,
+  type FundingDb,
+  type PayeeExpectation,
+} from '../_shared/funding.ts'
 import type { PaypalClient } from '../_shared/paypal.ts'
 
 export const MAX_WEBHOOK_BYTES = 100 * 1024
@@ -44,6 +49,40 @@ export interface WebhookDeps {
   flagForReview(pactId: string): Promise<'moved' | 'skipped'>
 }
 
+async function readBoundedBody(request: Request): Promise<string> {
+  const reader = request.body?.getReader()
+  if (!reader) return ''
+
+  const chunks: Uint8Array[] = []
+  let byteLength = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      byteLength += value.byteLength
+      if (byteLength > MAX_WEBHOOK_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        throw new HttpError(413, 'body_too_large', 'Webhook body is too large.')
+      }
+      chunks.push(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  const bytes = new Uint8Array(byteLength)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+  } catch {
+    throw new HttpError(400, 'invalid_encoding', 'Webhook body must be UTF-8 JSON.')
+  }
+}
+
 interface Resource {
   id?: unknown
   status?: unknown
@@ -68,13 +107,13 @@ export async function handleWebhook(deps: WebhookDeps, request: Request): Promis
   if (Number.isFinite(declared) && declared > MAX_WEBHOOK_BYTES) {
     throw new HttpError(413, 'body_too_large', 'Webhook body is too large.')
   }
-  const raw = await request.text()
-  if (raw.length > MAX_WEBHOOK_BYTES) throw new HttpError(413, 'body_too_large', 'Webhook body is too large.')
+  const raw = await readBoundedBody(request)
 
   let event: { id?: unknown; event_type?: unknown; resource?: unknown }
   try {
     const parsed = JSON.parse(raw)
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object')
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
+      throw new Error('not an object')
     event = parsed
   } catch {
     throw new HttpError(400, 'invalid_json', 'Webhook body must be a JSON object.')
@@ -83,11 +122,19 @@ export async function handleWebhook(deps: WebhookDeps, request: Request): Promis
   // Signature first. Anything that is not an unambiguous SUCCESS is a 400.
   let verified = false
   try {
-    verified = await deps.paypal.verifyWebhook({ headers: request.headers, webhookId: deps.webhookId, event })
+    verified = await deps.paypal.verifyWebhook({
+      headers: request.headers,
+      webhookId: deps.webhookId,
+      rawEventBody: raw,
+    })
   } catch (err) {
     // A verification outage is NOT a rejection: ask PayPal to retry later.
     console.error('webhook: signature verification unavailable:', (err as Error).message)
-    throw new HttpError(503, 'verification_unavailable', 'Could not verify the signature right now.')
+    throw new HttpError(
+      503,
+      'verification_unavailable',
+      'Could not verify the signature right now.',
+    )
   }
   if (!verified) {
     console.error('webhook: rejected an unverified body')
@@ -96,7 +143,8 @@ export async function handleWebhook(deps: WebhookDeps, request: Request): Promis
 
   const eventId = str(event.id)
   const eventType = str(event.event_type)
-  if (!eventId || !eventType) throw new HttpError(400, 'invalid_event', 'Webhook event has no id or type.')
+  if (!eventId || !eventType)
+    throw new HttpError(400, 'invalid_event', 'Webhook event has no id or type.')
 
   if (await deps.events.seen(eventId)) return json({ ok: true, replay: true })
 

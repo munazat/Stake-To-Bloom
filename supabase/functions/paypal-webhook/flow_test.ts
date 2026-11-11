@@ -1,7 +1,16 @@
 /** flow_test.ts — webhook: signature, replay, size cap, funding, review. No network. */
 import assert from 'node:assert/strict'
 import { HttpError } from '../_shared/http.ts'
-import { CAPTURE, ORDER, PACT, completedOrder, fakeEvents, fakeFunding, fakePaypal, pactRow } from '../_shared/testkit.ts'
+import {
+  CAPTURE,
+  ORDER,
+  PACT,
+  completedOrder,
+  fakeEvents,
+  fakeFunding,
+  fakePaypal,
+  pactRow,
+} from '../_shared/testkit.ts'
 import { MAX_WEBHOOK_BYTES, handleWebhook, type WebhookDeps } from './flow.ts'
 
 function setup(pact: ReturnType<typeof pactRow> | null = pactRow()) {
@@ -56,9 +65,11 @@ async function status(p: Promise<Response>): Promise<number> {
 
 Deno.test('a verified CAPTURE.COMPLETED funds the pact and is audited as verified', async () => {
   const { paypal, events, funding, deps } = setup()
-  const res = await handleWebhook(deps, post(eventBody()))
+  const rawBody = JSON.stringify(eventBody(), null, 2)
+  const res = await handleWebhook(deps, post(rawBody))
   assert.equal(res.status, 200)
   assert.deepEqual(paypal.calls, ['verify', 'get'])
+  assert.equal(paypal.verifyInputs[0].rawEventBody, rawBody)
   assert.deepEqual(funding.calls, ['saveCapture', 'addLedger', 'addDays', 'activate'])
   assert.equal(events.rows.length, 1)
   assert.equal(events.rows[0].source, 'WEBHOOK')
@@ -88,20 +99,46 @@ Deno.test('a replayed event is 200 and changes nothing', async () => {
   assert.equal(funding.ledger.length, 1)
 })
 
-Deno.test('if processing fails the event id is NOT marked seen, so the retry runs again', async () => {
-  const { funding, events, deps } = setup()
-  funding.addLedger = () => Promise.reject(new Error('db down'))
-  await assert.rejects(handleWebhook(deps, post(eventBody())))
-  assert.equal(events.rows.length, 0)
-  funding.addLedger = () => Promise.resolve()
-  assert.equal((await handleWebhook(deps, post(eventBody()))).status, 200)
-  assert.equal(events.rows.length, 1)
-})
+Deno.test(
+  'if processing fails the event id is NOT marked seen, so the retry runs again',
+  async () => {
+    const { funding, events, deps } = setup()
+    funding.addLedger = () => Promise.reject(new Error('db down'))
+    await assert.rejects(handleWebhook(deps, post(eventBody())))
+    assert.equal(events.rows.length, 0)
+    funding.addLedger = () => Promise.resolve()
+    assert.equal((await handleWebhook(deps, post(eventBody()))).status, 200)
+    assert.equal(events.rows.length, 1)
+  },
+)
 
 Deno.test('a body over 100 KB is 413 before any verification call', async () => {
   const { paypal, deps } = setup()
   const big = JSON.stringify({ id: 'x', event_type: 'A', pad: 'z'.repeat(MAX_WEBHOOK_BYTES + 10) })
   assert.equal(await status(handleWebhook(deps, post(big))), 413)
+  assert.deepEqual(paypal.calls, [])
+})
+
+Deno.test('the webhook cap counts UTF-8 bytes, not JavaScript characters', async () => {
+  const { paypal, deps } = setup()
+  const body = JSON.stringify({
+    id: 'x',
+    event_type: 'A',
+    pad: 'é'.repeat(MAX_WEBHOOK_BYTES / 2 + 10),
+  })
+  assert.ok(body.length < MAX_WEBHOOK_BYTES)
+  assert.ok(new TextEncoder().encode(body).byteLength > MAX_WEBHOOK_BYTES)
+  assert.equal(await status(handleWebhook(deps, post(body))), 413)
+  assert.deepEqual(paypal.calls, [])
+})
+
+Deno.test('an invalid UTF-8 webhook body is rejected before signature verification', async () => {
+  const { paypal, deps } = setup()
+  const request = new Request('https://x.test/paypal-webhook', {
+    method: 'POST',
+    body: new Uint8Array([0xff, 0xfe]),
+  })
+  assert.equal(await status(handleWebhook(deps, request)), 400)
   assert.deepEqual(paypal.calls, [])
 })
 
@@ -118,13 +155,16 @@ Deno.test('a verification outage is 503 (PayPal retries), not a rejection', asyn
   assert.equal(await status(handleWebhook(deps, post(eventBody()))), 503)
 })
 
-Deno.test('a capture for an amount that does not match is recorded as REJECTED and funds nothing', async () => {
-  const { paypal, events, funding, deps } = setup()
-  paypal.orderToReturn = completedOrder({ amount: '1.00' })
-  assert.equal((await handleWebhook(deps, post(eventBody()))).status, 200)
-  assert.deepEqual(funding.calls, [])
-  assert.equal(events.rows[0].status, 'REJECTED')
-})
+Deno.test(
+  'a capture for an amount that does not match is recorded as REJECTED and funds nothing',
+  async () => {
+    const { paypal, events, funding, deps } = setup()
+    paypal.orderToReturn = completedOrder({ amount: '1.00' })
+    assert.equal((await handleWebhook(deps, post(eventBody()))).status, 200)
+    assert.deepEqual(funding.calls, [])
+    assert.equal(events.rows[0].status, 'REJECTED')
+  },
+)
 
 Deno.test('an event for an order we do not know is recorded and changes nothing', async () => {
   const { funding, events, deps } = setup(null)
@@ -133,12 +173,15 @@ Deno.test('an event for an order we do not know is recorded and changes nothing'
   assert.equal(events.rows[0].pactId, null)
 })
 
-Deno.test('CAPTURE.REVERSED flags the pact for review; payout events only appear on the feed', async () => {
-  const { flagged, funding, events, deps } = setup(pactRow({ status: 'ACTIVE' }))
-  await handleWebhook(deps, post(eventBody('PAYMENT.CAPTURE.REVERSED', 'E2')))
-  assert.deepEqual(flagged, [PACT])
-  await handleWebhook(deps, post(eventBody('PAYMENT.PAYOUTSBATCH.SUCCESS', 'E3')))
-  assert.deepEqual(flagged, [PACT]) // unchanged
-  assert.deepEqual(funding.calls, [])
-  assert.equal(events.rows.length, 2)
-})
+Deno.test(
+  'CAPTURE.REVERSED flags the pact for review; payout events only appear on the feed',
+  async () => {
+    const { flagged, funding, events, deps } = setup(pactRow({ status: 'ACTIVE' }))
+    await handleWebhook(deps, post(eventBody('PAYMENT.CAPTURE.REVERSED', 'E2')))
+    assert.deepEqual(flagged, [PACT])
+    await handleWebhook(deps, post(eventBody('PAYMENT.PAYOUTSBATCH.SUCCESS', 'E3')))
+    assert.deepEqual(flagged, [PACT]) // unchanged
+    assert.deepEqual(funding.calls, [])
+    assert.equal(events.rows.length, 2)
+  },
+)

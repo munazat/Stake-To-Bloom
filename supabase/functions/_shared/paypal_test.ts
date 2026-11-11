@@ -28,10 +28,14 @@ Deno.test('I7: only the sandbox host and mode are accepted', () => {
   assert.equal(assertSandbox(env({ PAYPAL_ENV: 'sandbox' })), SANDBOX_BASE_URL)
   assert.throws(() => assertSandbox(env({ PAYPAL_ENV: 'live' })), /sandbox/)
   assert.throws(() => assertSandbox(env({ PAYPAL_ENV: 'production' })), /sandbox/)
-  assert.throws(() => assertSandbox(env({ PAYPAL_BASE_URL: 'https://api-m.paypal.com' })), /base URL/)
+  assert.throws(
+    () => assertSandbox(env({ PAYPAL_BASE_URL: 'https://api-m.paypal.com' })),
+    /base URL/,
+  )
   assert.throws(() => assertSandbox(env({ PAYPAL_BASE_URL: 'https://evil.example' })), /base URL/)
   assert.throws(
-    () => createPaypalClient({ clientId: 'a', clientSecret: 'b', baseUrl: 'https://api-m.paypal.com' }),
+    () =>
+      createPaypalClient({ clientId: 'a', clientSecret: 'b', baseUrl: 'https://api-m.paypal.com' }),
     /sandbox/,
   )
 })
@@ -41,10 +45,16 @@ Deno.test('the mock adapter refuses to run on a hosted Supabase project', () => 
   assert.equal(looksHosted('http://127.0.0.1:54321'), false)
   assert.equal(looksHosted('http://kong:8000'), false)
   assert.throws(
-    () => paypalClientFromEnv(env({ PAYMENTS_ADAPTER: 'mock', SUPABASE_URL: 'https://abcdef.supabase.co' })),
+    () =>
+      paypalClientFromEnv(
+        env({ PAYMENTS_ADAPTER: 'mock', SUPABASE_URL: 'https://abcdef.supabase.co' }),
+      ),
     /local development only/,
   )
-  assert.equal(paypalClientFromEnv(env({ PAYMENTS_ADAPTER: 'mock', SUPABASE_URL: 'http://kong:8000' })).kind, 'mock')
+  assert.equal(
+    paypalClientFromEnv(env({ PAYMENTS_ADAPTER: 'mock', SUPABASE_URL: 'http://kong:8000' })).kind,
+    'mock',
+  )
   assert.throws(() => paypalClientFromEnv(env({ PAYPAL_ENV: 'sandbox' })), HttpError) // credentials missing
 })
 
@@ -91,19 +101,30 @@ Deno.test('the OAuth token is cached until shortly before it expires', async () 
   assert.equal(calls.filter((c) => c.url.endsWith('/v1/oauth2/token')).length, 2)
 })
 
-Deno.test('createOrder sends the pact id, a deterministic request id and a cents-built amount', async () => {
-  const { fetcher, calls } = scripted([tokenResponse(), Response.json({ id: 'O1', status: 'CREATED' })])
-  const client = createPaypalClient({ clientId: 'id', clientSecret: 'secret', fetch: fetcher })
-  await client.createOrder({ pactId: PACT_ID, stakeCents: 2050, attempt: 2, returnUrl: 'http://x' })
-  const call = calls[1]
-  assert.equal(call.url, `${SANDBOX_BASE_URL}/v2/checkout/orders`)
-  assert.equal(call.headers.get('paypal-request-id'), `bloom-order-${PACT_ID}-2`)
-  assert.equal(call.headers.get('authorization'), 'Bearer T1')
-  const body = JSON.parse(call.body ?? '{}')
-  assert.equal(body.intent, 'CAPTURE')
-  assert.equal(body.purchase_units[0].custom_id, PACT_ID)
-  assert.deepEqual(body.purchase_units[0].amount, { currency_code: 'USD', value: '20.50' })
-})
+Deno.test(
+  'createOrder sends the pact id, a deterministic request id and a cents-built amount',
+  async () => {
+    const { fetcher, calls } = scripted([
+      tokenResponse(),
+      Response.json({ id: 'O1', status: 'CREATED' }),
+    ])
+    const client = createPaypalClient({ clientId: 'id', clientSecret: 'secret', fetch: fetcher })
+    await client.createOrder({
+      pactId: PACT_ID,
+      stakeCents: 2050,
+      attempt: 2,
+      returnUrl: 'http://x',
+    })
+    const call = calls[1]
+    assert.equal(call.url, `${SANDBOX_BASE_URL}/v2/checkout/orders`)
+    assert.equal(call.headers.get('paypal-request-id'), `bloom-order-${PACT_ID}-2`)
+    assert.equal(call.headers.get('authorization'), 'Bearer T1')
+    const body = JSON.parse(call.body ?? '{}')
+    assert.equal(body.intent, 'CAPTURE')
+    assert.equal(body.purchase_units[0].custom_id, PACT_ID)
+    assert.deepEqual(body.purchase_units[0].amount, { currency_code: 'USD', value: '20.50' })
+  },
+)
 
 Deno.test('I4: a 5xx is retried with the SAME request id; a 4xx is not retried', async () => {
   const { fetcher, calls } = scripted([
@@ -122,55 +143,77 @@ Deno.test('I4: a 5xx is retried with the SAME request id; a 4xx is not retried',
   assert.equal(order.status, 'COMPLETED')
   const captures = calls.filter((c) => c.url.endsWith('/capture'))
   assert.equal(captures.length, 3)
-  for (const c of captures) assert.equal(c.headers.get('paypal-request-id'), 'bloom-capture-ORDER-9')
+  for (const c of captures)
+    assert.equal(c.headers.get('paypal-request-id'), 'bloom-capture-ORDER-9')
 
   const four = scripted([
     tokenResponse(),
     Response.json(
-      { name: 'UNPROCESSABLE_ENTITY', debug_id: 'dbg', details: [{ issue: 'ORDER_ALREADY_CAPTURED' }] },
+      {
+        name: 'UNPROCESSABLE_ENTITY',
+        debug_id: 'dbg',
+        details: [{ issue: 'ORDER_ALREADY_CAPTURED' }],
+      },
       { status: 422 },
     ),
   ])
   const c2 = createPaypalClient({ clientId: 'id', clientSecret: 'secret', fetch: four.fetcher })
   await assert.rejects(
     c2.captureOrder('X'),
-    (err: unknown) => err instanceof PaypalError && err.issue === 'ORDER_ALREADY_CAPTURED' && err.status === 422,
+    (err: unknown) =>
+      err instanceof PaypalError && err.issue === 'ORDER_ALREADY_CAPTURED' && err.status === 422,
   )
   assert.equal(four.calls.length, 2)
 })
 
-Deno.test('webhook verification sends PayPal the transmission headers and the webhook id', async () => {
-  const { fetcher, calls } = scripted([
-    tokenResponse(),
-    Response.json({ verification_status: 'SUCCESS' }),
-    Response.json({ verification_status: 'FAILURE' }),
-  ])
-  const client = createPaypalClient({ clientId: 'id', clientSecret: 'secret', fetch: fetcher })
-  const headers = new Headers({
-    'paypal-auth-algo': 'SHA256withRSA',
-    'paypal-cert-url': 'https://api.sandbox.paypal.com/cert',
-    'paypal-transmission-id': 'tid',
-    'paypal-transmission-sig': 'sig',
-    'paypal-transmission-time': '2026-11-11T00:00:00Z',
-  })
-  assert.equal(await client.verifyWebhook({ headers, webhookId: 'WH1', event: { id: 'E1' } }), true)
-  const body = JSON.parse(calls[1].body ?? '{}')
-  assert.equal(body.webhook_id, 'WH1')
-  assert.equal(body.transmission_id, 'tid')
-  assert.deepEqual(body.webhook_event, { id: 'E1' })
-  assert.equal(await client.verifyWebhook({ headers, webhookId: 'WH1', event: {} }), false)
-})
+Deno.test(
+  'webhook verification preserves the original event JSON and sends the required headers',
+  async () => {
+    const { fetcher, calls } = scripted([
+      tokenResponse(),
+      Response.json({ verification_status: 'SUCCESS' }),
+      Response.json({ verification_status: 'FAILURE' }),
+    ])
+    const client = createPaypalClient({ clientId: 'id', clientSecret: 'secret', fetch: fetcher })
+    const headers = new Headers({
+      'paypal-auth-algo': 'SHA256withRSA',
+      'paypal-cert-url': 'https://api.sandbox.paypal.com/cert',
+      'paypal-transmission-id': 'tid',
+      'paypal-transmission-sig': 'sig',
+      'paypal-transmission-time': '2026-11-11T00:00:00Z',
+    })
+    const rawEventBody = '{ "id" : "E1", "note": "keep  spaces" }'
+    assert.equal(await client.verifyWebhook({ headers, webhookId: 'WH1', rawEventBody }), true)
+    const body = JSON.parse(calls[1].body ?? '{}')
+    assert.equal(body.webhook_id, 'WH1')
+    assert.equal(body.transmission_id, 'tid')
+    assert.deepEqual(body.webhook_event, { id: 'E1', note: 'keep  spaces' })
+    assert.ok(calls[1].body?.includes(`"webhook_event":${rawEventBody}`))
+    assert.equal(
+      await client.verifyWebhook({ headers, webhookId: 'WH1', rawEventBody: '{}' }),
+      false,
+    )
+  },
+)
 
-Deno.test('mock adapter: reads are unpaid, a capture is COMPLETED and carries the pact id', async () => {
-  const mock = createMockPaypalClient()
-  const { id } = await mock.createOrder({ pactId: PACT_ID, stakeCents: 2000, attempt: 1, returnUrl: '' })
-  assert.equal((await mock.getOrder(id)).status, 'CREATED')
-  const captured = await mock.captureOrder(id)
-  assert.equal(captured.status, 'COMPLETED')
-  assert.equal(captured.purchase_units[0].payments?.captures?.[0].custom_id, PACT_ID)
-  assert.equal(captured.purchase_units[0].amount?.value, '20.00')
-  await assert.rejects(mock.getOrder('REAL-LOOKING-ID'), PaypalError)
-})
+Deno.test(
+  'mock adapter: reads are unpaid, a capture is COMPLETED and carries the pact id',
+  async () => {
+    const mock = createMockPaypalClient()
+    const { id } = await mock.createOrder({
+      pactId: PACT_ID,
+      stakeCents: 2000,
+      attempt: 1,
+      returnUrl: '',
+    })
+    assert.equal((await mock.getOrder(id)).status, 'CREATED')
+    const captured = await mock.captureOrder(id)
+    assert.equal(captured.status, 'COMPLETED')
+    assert.equal(captured.purchase_units[0].payments?.captures?.[0].custom_id, PACT_ID)
+    assert.equal(captured.purchase_units[0].amount?.value, '20.00')
+    await assert.rejects(mock.getOrder('REAL-LOOKING-ID'), PaypalError)
+  },
+)
 
 Deno.test('I10: payments_enabled must be exactly true, else 503', async () => {
   const admin = (value: unknown) =>
@@ -179,13 +222,17 @@ Deno.test('I10: payments_enabled must be exactly true, else 503', async () => {
       from: () => ({
         select: () => ({
           eq: () => ({
-            maybeSingle: () => Promise.resolve({ data: value === undefined ? null : { value }, error: null }),
+            maybeSingle: () =>
+              Promise.resolve({ data: value === undefined ? null : { value }, error: null }),
           }),
         }),
       }),
     }) as any
   await assertPaymentsEnabled(admin(true))
   for (const off of [false, 'true', null, undefined]) {
-    await assert.rejects(assertPaymentsEnabled(admin(off)), (e: unknown) => e instanceof HttpError && e.status === 503)
+    await assert.rejects(
+      assertPaymentsEnabled(admin(off)),
+      (e: unknown) => e instanceof HttpError && e.status === 503,
+    )
   }
 })

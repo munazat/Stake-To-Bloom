@@ -38,7 +38,9 @@ const denoEnv: EnvReader = (name) => Deno.env.get(name)
 export function assertSandbox(env: EnvReader = denoEnv): string {
   const mode = (env('PAYPAL_ENV') ?? 'sandbox').trim().toLowerCase()
   if (mode !== 'sandbox') {
-    throw new Error(`PAYPAL_ENV must be "sandbox" (got "${mode}"). BloomStake never touches real money.`)
+    throw new Error(
+      `PAYPAL_ENV must be "sandbox" (got "${mode}"). BloomStake never touches real money.`,
+    )
   }
   const base = (env('PAYPAL_BASE_URL') ?? SANDBOX_BASE_URL).trim().replace(/\/+$/, '')
   if (base !== SANDBOX_BASE_URL) {
@@ -95,7 +97,8 @@ export interface CreateOrderInput {
 export interface WebhookVerifyInput {
   headers: Headers
   webhookId: string
-  event: unknown
+  /** Original UTF-8 JSON bytes, preserved for PayPal's postback signature check. */
+  rawEventBody: string
 }
 
 /** What the money functions need from PayPal. Real, mock and test fakes all satisfy it. */
@@ -155,7 +158,10 @@ export function createPaypalClient(options: PaypalClientOptions): PaypalClient {
     const basic = btoa(`${options.clientId}:${options.clientSecret}`)
     const response = await doFetch(`${baseUrl}/v1/oauth2/token`, {
       method: 'POST',
-      headers: { authorization: `Basic ${basic}`, 'content-type': 'application/x-www-form-urlencoded' },
+      headers: {
+        authorization: `Basic ${basic}`,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
       body: 'grant_type=client_credentials',
     })
     if (!response.ok) {
@@ -174,7 +180,7 @@ export function createPaypalClient(options: PaypalClientOptions): PaypalClient {
    */
   async function paypalFetch(
     path: string,
-    init: { method: 'GET' | 'POST'; body?: unknown; requestId?: string },
+    init: { method: 'GET' | 'POST'; body?: unknown; rawBody?: string; requestId?: string },
   ): Promise<unknown> {
     let lastError: unknown = null
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -184,16 +190,22 @@ export function createPaypalClient(options: PaypalClientOptions): PaypalClient {
           authorization: `Bearer ${token}`,
           accept: 'application/json',
         }
-        if (init.body !== undefined) headers['content-type'] = 'application/json'
+        if (init.body !== undefined || init.rawBody !== undefined)
+          headers['content-type'] = 'application/json'
         if (init.requestId) headers['paypal-request-id'] = init.requestId
         const response = await doFetch(`${baseUrl}${path}`, {
           method: init.method,
           headers,
-          body: init.body === undefined ? undefined : JSON.stringify(init.body),
+          body: init.rawBody ?? (init.body === undefined ? undefined : JSON.stringify(init.body)),
         })
         if (response.status === 401) cached = null // token revoked early; fetch a new one next time
         if (response.status >= 500 || response.status === 401) {
-          lastError = new PaypalError(response.status, null, response.headers.get('paypal-debug-id'), 'PayPal is unavailable.')
+          lastError = new PaypalError(
+            response.status,
+            null,
+            response.headers.get('paypal-debug-id'),
+            'PayPal is unavailable.',
+          )
         } else {
           const payload: unknown = await response.json().catch(() => null)
           if (!response.ok) {
@@ -257,7 +269,9 @@ export function createPaypalClient(options: PaypalClientOptions): PaypalClient {
     },
 
     async getOrder(orderId) {
-      return OrderSchema.parse(await paypalFetch(`/v2/checkout/orders/${encodeURIComponent(orderId)}`, { method: 'GET' }))
+      return OrderSchema.parse(
+        await paypalFetch(`/v2/checkout/orders/${encodeURIComponent(orderId)}`, { method: 'GET' }),
+      )
     },
 
     async captureOrder(orderId) {
@@ -270,18 +284,21 @@ export function createPaypalClient(options: PaypalClientOptions): PaypalClient {
       )
     },
 
-    async verifyWebhook({ headers, webhookId, event }) {
+    async verifyWebhook({ headers, webhookId, rawEventBody }) {
+      const fields = {
+        auth_algo: headers.get('paypal-auth-algo'),
+        cert_url: headers.get('paypal-cert-url'),
+        transmission_id: headers.get('paypal-transmission-id'),
+        transmission_sig: headers.get('paypal-transmission-sig'),
+        transmission_time: headers.get('paypal-transmission-time'),
+        webhook_id: webhookId,
+      }
+      const verificationBody = `{${Object.entries(fields)
+        .map(([key, value]) => `${JSON.stringify(key)}:${JSON.stringify(value)}`)
+        .join(',')},"webhook_event":${rawEventBody}}`
       const payload = await paypalFetch('/v1/notifications/verify-webhook-signature', {
         method: 'POST',
-        body: {
-          auth_algo: headers.get('paypal-auth-algo'),
-          cert_url: headers.get('paypal-cert-url'),
-          transmission_id: headers.get('paypal-transmission-id'),
-          transmission_sig: headers.get('paypal-transmission-sig'),
-          transmission_time: headers.get('paypal-transmission-time'),
-          webhook_id: webhookId,
-          webhook_event: event,
-        },
+        rawBody: verificationBody,
       })
       return (payload as { verification_status?: string } | null)?.verification_status === 'SUCCESS'
     },
@@ -325,14 +342,20 @@ export function createMockPaypalClient(): PaypalClient {
     return {
       id: orderId,
       status,
-      payer: paid ? { email_address: 'mock.buyer@example.com', payer_id: 'MOCKPAYER0001' } : undefined,
+      payer: paid
+        ? { email_address: 'mock.buyer@example.com', payer_id: 'MOCKPAYER0001' }
+        : undefined,
       purchase_units: [
         {
           reference_id: pactId,
           custom_id: pactId,
           amount,
           payments: paid
-            ? { captures: [{ id: `MOCK-CAPTURE.${pactId}`, status: 'COMPLETED', amount, custom_id: pactId }] }
+            ? {
+                captures: [
+                  { id: `MOCK-CAPTURE.${pactId}`, status: 'COMPLETED', amount, custom_id: pactId },
+                ],
+              }
             : undefined,
         },
       ],
@@ -341,7 +364,10 @@ export function createMockPaypalClient(): PaypalClient {
   return {
     kind: 'mock',
     createOrder: (input) =>
-      Promise.resolve({ id: `${MOCK_PREFIX}.${input.pactId}.${input.stakeCents}.${input.attempt}`, status: 'CREATED' }),
+      Promise.resolve({
+        id: `${MOCK_PREFIX}.${input.pactId}.${input.stakeCents}.${input.attempt}`,
+        status: 'CREATED',
+      }),
     getOrder: (orderId) => Promise.resolve().then(() => orderBody(orderId, 'CREATED', false)),
     captureOrder: (orderId) => Promise.resolve().then(() => orderBody(orderId, 'COMPLETED', true)),
     verifyWebhook: ({ headers }) => Promise.resolve(headers.get('x-mock-webhook') === 'valid'),
@@ -356,7 +382,9 @@ export function createMockPaypalClient(): PaypalClient {
 export function paypalClientFromEnv(env: EnvReader = denoEnv): PaypalClient {
   if ((env('PAYMENTS_ADAPTER') ?? '').trim().toLowerCase() === 'mock') {
     if (looksHosted(env('SUPABASE_URL'))) {
-      throw new Error('PAYMENTS_ADAPTER=mock is for local development only; refusing to start on a hosted project.')
+      throw new Error(
+        'PAYMENTS_ADAPTER=mock is for local development only; refusing to start on a hosted project.',
+      )
     }
     return createMockPaypalClient()
   }
@@ -364,7 +392,11 @@ export function paypalClientFromEnv(env: EnvReader = denoEnv): PaypalClient {
   const clientId = env('PAYPAL_CLIENT_ID')
   const clientSecret = env('PAYPAL_CLIENT_SECRET')
   if (!clientId || !clientSecret) {
-    throw new HttpError(500, 'config', 'PayPal sandbox credentials are missing from the function environment.')
+    throw new HttpError(
+      500,
+      'config',
+      'PayPal sandbox credentials are missing from the function environment.',
+    )
   }
   return createPaypalClient({ clientId, clientSecret, baseUrl })
 }
@@ -375,9 +407,17 @@ export function paypalClientFromEnv(env: EnvReader = denoEnv): PaypalClient {
 
 /** 503 unless `app_config.payments_enabled` is exactly true. Read on every request. */
 export async function assertPaymentsEnabled(admin: SupabaseClient): Promise<void> {
-  const { data, error } = await admin.from('app_config').select('value').eq('key', 'payments_enabled').maybeSingle()
+  const { data, error } = await admin
+    .from('app_config')
+    .select('value')
+    .eq('key', 'payments_enabled')
+    .maybeSingle()
   if (error) throw new Error('read payments_enabled failed')
   if (data?.value !== true) {
-    throw new HttpError(503, 'payments_disabled', 'Payments are switched off right now. Nothing was charged.')
+    throw new HttpError(
+      503,
+      'payments_disabled',
+      'Payments are switched off right now. Nothing was charged.',
+    )
   }
 }
