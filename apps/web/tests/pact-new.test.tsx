@@ -23,14 +23,31 @@ async function goToContract() {
   fireEvent.click(screen.getByRole('button', { name: /Review contract/i }))
 }
 
+describe('PactNew custom goal', () => {
+  it('needs a described habit before Next, and asks for the AI draft on the contract step', () => {
+    renderWizard()
+    fireEvent.click(screen.getByRole('button', { name: /Custom goal/i }))
+    expect(screen.getByRole('button', { name: /^Next$/ })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(/Describe your habit/i), {
+      target: { value: 'Read 20 pages and show the book' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: /^Next$/ }))
+    // No template threshold or title for a custom goal: the AI proposes the checks.
+    expect(screen.queryByLabelText(/Daily target/i)).toBeNull()
+    expect(screen.queryByLabelText(/^Title/i)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Review contract/i }))
+    expect(screen.getByRole('button', { name: /Draft contract with AI/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Lock this contract/i })).toBeNull()
+  })
+})
+
 describe('PactNew wizard', () => {
-  it('offers the four template goals and shows custom as unavailable', () => {
+  it('offers the four template goals and a custom goal', () => {
     renderWizard()
     for (const label of ['Steps', 'Water', 'Healthy meal', 'Workout']) {
       expect(screen.getByRole('button', { name: new RegExp(label) })).toBeInTheDocument()
     }
-    expect(screen.getByText(/Custom goal/i)).toBeInTheDocument()
-    expect(screen.getByText(/Gemini key/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Custom goal/i })).toBeInTheDocument()
   })
 
   it('previews the same contract hash the Edge Function stores', async () => {
