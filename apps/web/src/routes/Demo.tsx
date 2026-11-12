@@ -19,8 +19,8 @@ export default function DemoRoute() {
         </Link>
         <h1 className="mt-5 text-3xl font-extrabold text-emerald-900">The 90-second guided demo</h1>
         <p className="mt-3 text-slate-600">
-          See how a wellness pact grows a garden and how a deterministic settlement divides
-          simulated stakes. No real money moves.
+          See how a wellness pact grows a garden and how the stakes are shared out at the end.
+          Everything here is simulated, so no real money moves.
         </p>
         <ol className="mt-6 space-y-4 rounded-2xl border border-emerald-100 bg-white p-5">
           <li>
@@ -29,7 +29,7 @@ export default function DemoRoute() {
           </li>
           <li>
             <strong>2. Submit one real proof.</strong> The first day uses the normal image pipeline
-            and deterministic referee. You can use the browser-generated sample.
+            and the fixed rules. You can use the generated sample image.
           </li>
           <li>
             <strong>3. Fast-forward.</strong> Once your real proof passes, advance the rest of the

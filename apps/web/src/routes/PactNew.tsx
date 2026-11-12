@@ -31,7 +31,7 @@ import {
   type TemplateGoal,
 } from '../lib/api.ts'
 import { isSupabaseConfigured } from '../lib/config.ts'
-import { SandboxBanner } from './Landing.tsx'
+import { SandboxBanner, SiteFooter } from './Landing.tsx'
 
 type GoalChoice = TemplateGoal | 'custom'
 
@@ -207,7 +207,7 @@ export default function PactNew() {
         </h1>
         <p className="mt-1 text-sm text-slate-600">
           Seven days, {formatUsd(stakeCents)} on the line. The rule you finish with is the rule you
-          are shown — it is hashed and frozen the moment you lock it.
+          are shown, and it is sealed the moment you lock it.
         </p>
 
         <ol className="mt-6 flex gap-2" aria-label="Progress">
@@ -643,9 +643,7 @@ export default function PactNew() {
         )}
       </main>
 
-      <footer className="border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400">
-        The AI only perceives. A deterministic rule engine decides every cent.
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

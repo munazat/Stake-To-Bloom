@@ -110,7 +110,8 @@ function ResultCard({ result }: { result: ProofResult }) {
             ))}
           </ul>
           <p className="mt-2 text-xs text-slate-400">
-            This is data the AI reported. A deterministic rule engine made the decision above.
+            This is what the AI read from your image. The pass or fail decision above comes from
+            your fixed rules.
           </p>
         </div>
       )}

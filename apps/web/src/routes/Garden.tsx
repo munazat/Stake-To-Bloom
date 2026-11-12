@@ -13,7 +13,7 @@ import { formatUsd, type PactStatus } from '@bloomstake/core'
 import GardenPlot from '../garden/GardenPlot.tsx'
 import { fetchPlots, subscribeToPlots } from '../lib/garden.ts'
 import { isSupabaseConfigured } from '../lib/config.ts'
-import { SandboxBanner } from './Landing.tsx'
+import { SandboxBanner, SiteFooter } from './Landing.tsx'
 
 // An unfunded pact and a freshly planted one are both the "seed" stage, so the
 // stage alone cannot tell the user whether their stake is locked. ACTIVE is left
@@ -69,8 +69,8 @@ export default function Garden() {
           Your garden
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Every verified day grows the plant. A missed day makes it droop. Vitality is computed by
-          the server — this page only draws it.
+          Every verified day makes a plant grow. A missed day makes it droop. Your plants are shown
+          exactly as the server records them.
         </p>
 
         {!isSupabaseConfigured ? (
@@ -134,9 +134,7 @@ export default function Garden() {
         )}
       </main>
 
-      <footer className="border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400">
-        The AI only perceives. A deterministic rule engine decides every cent.
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

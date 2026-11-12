@@ -16,8 +16,9 @@ export default function AboutRoute() {
         </p>
         <h2 className="mt-8 text-xl font-bold">How decisions work</h2>
         <p className="mt-2 text-slate-600">
-          Gemini extracts observations from an image. That output is untrusted. A deterministic rule
-          engine checks it against the frozen pact rules. AI never decides a verdict or moves money.
+          Gemini reads what is in your image, such as the date and the number. Fixed rules then
+          check that against the rules you sealed when you staked. The AI never decides a pass or a
+          fail and it never moves money.
         </p>
         <h2 className="mt-7 text-xl font-bold">Payments and demo</h2>
         <p className="mt-2 text-slate-600">
@@ -33,7 +34,7 @@ export default function AboutRoute() {
         </p>
         <h2 className="mt-7 text-xl font-bold">Built with</h2>
         <p className="mt-2 text-slate-600">
-          React, Supabase, Gemini, PayPal Sandbox, and a deterministic TypeScript core. Design
+          React, Supabase, Gemini, PayPal Sandbox, and a rules engine written in TypeScript. Design
           patterns were informed by the author’s earlier{' '}
           <a
             className="text-emerald-800 underline"
