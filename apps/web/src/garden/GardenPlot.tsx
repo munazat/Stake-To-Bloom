@@ -11,6 +11,24 @@ import { gardenStatusText, type GardenStage } from '@bloomstake/core'
 import PlantSVG from './PlantSVG.tsx'
 import { detectWebGL, isLiteMode, prefersReducedMotion } from './capabilities.ts'
 
+/** The illustrated fields. One is chosen per plot from its title, so a garden has variety. */
+const FIELDS = ['garden', 'main-garden', 'cherry-blossom', 'greenhouse'] as const
+
+function fieldFor(title: string): string {
+  let hash = 0
+  for (const ch of title) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
+  return `/themes/${FIELDS[hash % FIELDS.length]}.webp`
+}
+
+/** The interactive 3D bed is opt-in (?3d=1); the illustrated field is the default. */
+function wants3D(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get('3d') === '1'
+  } catch {
+    return false
+  }
+}
+
 const Scene3D = lazy(() => import('./Scene3D.tsx'))
 
 class RendererBoundary extends Component<
@@ -46,23 +64,41 @@ export default function GardenPlot({
   days,
   caption,
 }: GardenPlotProps) {
-  const [webglAvailable, setWebglAvailable] = useState(detectWebGL)
+  const [webglAvailable, setWebglAvailable] = useState(() => wants3D() && detectWebGL())
   const [reducedMotion] = useState(prefersReducedMotion)
   const [lite] = useState(() => isLiteMode())
   const handleContextLost = useCallback(() => setWebglAvailable(false), [])
 
+  const field = fieldFor(title)
   const fallback = (
-    <PlantSVG
-      stage={stage}
-      vitality={vitality}
-      reducedMotion={reducedMotion}
-      title={`${title}: ${stage}`}
-    />
+    <div
+      className="relative h-full w-full bg-cover bg-center"
+      style={{ backgroundImage: `url(${field})` }}
+    >
+      <div
+        className="absolute"
+        style={{
+          left: '23%',
+          top: '16%',
+          width: '54%',
+          aspectRatio: '1 / 1',
+          filter: 'drop-shadow(0 4px 5px rgba(30,20,10,0.35))',
+        }}
+      >
+        <PlantSVG
+          bare
+          stage={stage}
+          vitality={vitality}
+          reducedMotion={reducedMotion}
+          title={`${title}: ${stage}`}
+        />
+      </div>
+    </div>
   )
 
   return (
     <figure className="m-0 overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
-      <div className="meadow aspect-square w-full" data-renderer={webglAvailable ? 'webgl' : 'svg'}>
+      <div className="aspect-[4/5] w-full bg-emerald-50" data-renderer={webglAvailable ? 'webgl' : 'svg'}>
         {webglAvailable ? (
           <RendererBoundary fallback={fallback}>
             <Suspense fallback={fallback}>

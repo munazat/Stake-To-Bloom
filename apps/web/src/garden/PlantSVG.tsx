@@ -17,9 +17,17 @@ export interface PlantSVGProps {
   vitality: number
   reducedMotion?: boolean
   title?: string
+  /** Skip the soil pad when the plant is drawn over a field illustration. */
+  bare?: boolean
 }
 
-export default function PlantSVG({ stage, vitality, reducedMotion = false, title }: PlantSVGProps) {
+export default function PlantSVG({
+  stage,
+  vitality,
+  reducedMotion = false,
+  title,
+  bare = false,
+}: PlantSVGProps) {
   const look = plantLook(stage, vitality)
   const height = look.stemHeight * SCALE
   const tipX = 100 + look.stemBend * height * 0.75
@@ -71,8 +79,12 @@ export default function PlantSVG({ stage, vitality, reducedMotion = false, title
       className="h-full w-full"
       data-stage={stage}
     >
-      <rect x="34" y={SOIL_Y} width="132" height="26" rx="6" fill="var(--soil, #4b3b2a)" />
-      <rect x="34" y={SOIL_Y} width="132" height="7" rx="3" fill="#5f4b36" />
+      {bare ? null : (
+        <>
+          <rect x="34" y={SOIL_Y} width="132" height="26" rx="6" fill="var(--soil, #4b3b2a)" />
+          <rect x="34" y={SOIL_Y} width="132" height="7" rx="3" fill="#5f4b36" />
+        </>
+      )}
 
       {stage === 'seed' ? (
         <g style={{ transition }}>
