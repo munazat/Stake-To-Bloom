@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { isSupabaseConfigured } from '../lib/config.ts'
 
 export function SandboxBanner() {
   return (
@@ -27,8 +26,7 @@ export default function Landing() {
         </h1>
 
         <p className="max-w-xl text-lg text-slate-600">
-          Put real skin in the game for your daily wellness goals. Lock a stake, upload daily proof,
-          and let an AI vision referee feed a deterministic rule engine — your 2.5D garden blooms on
+          Put a sandbox stake on your daily wellness goals. Lock it in, upload daily proof, and let an AI vision referee feed a deterministic rule engine — your 2.5D garden blooms on
           verified days and wilts when you miss them.
         </p>
 
@@ -58,9 +56,6 @@ export default function Landing() {
           </Link>
         </div>
 
-        <p className="mt-6 text-xs uppercase tracking-wide text-slate-400">
-          {isSupabaseConfigured ? 'Supabase connected' : 'Supabase not configured yet'}
-        </p>
       </main>
 
       <footer className="border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400">

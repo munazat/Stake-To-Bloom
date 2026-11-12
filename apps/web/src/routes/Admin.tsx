@@ -1,8 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { edgeFunctionUrl, supabaseAnonKey } from '../lib/config.ts'
 import { SandboxBanner } from './Landing.tsx'
 
 export default function AdminRoute() {
+  // Keep this page out of search results; access is still enforced by the server secret.
+  useEffect(() => {
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex'
+    document.head.appendChild(meta)
+    return () => meta.remove()
+  }, [])
   const [secret, setSecret] = useState('')
   const [pactId, setPactId] = useState('')
   const [message, setMessage] = useState('')
@@ -38,8 +46,8 @@ export default function AdminRoute() {
       <main className="mx-auto max-w-xl px-5 py-10">
         <h1 className="text-2xl font-bold">Operations</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Hidden admin tools. The secret is entered at runtime and is not included in the app bundle
-          or stored after this page closes.
+          Maintenance tools for the project team. Access requires a secret that is entered here at
+          runtime and is never stored.
         </p>
         <label className="mt-5 block text-sm font-semibold">
           Admin secret

@@ -22,8 +22,8 @@ export default function AboutRoute() {
         <h2 className="mt-7 text-xl font-bold">Payments and demo</h2>
         <p className="mt-2 text-slate-600">
           Payments are sandbox-only. The guided demo uses labelled simulated stakes and simulated
-          days; they are not PayPal transactions. Real payment and payout flows stay disabled until
-          the sandbox is configured.
+          days; they are not PayPal transactions. Real sandbox stakes use PayPal's test environment
+          with test buyer accounts, so no real money ever moves.
         </p>
         <h2 className="mt-7 text-xl font-bold">Privacy</h2>
         <p className="mt-2 text-slate-600">
