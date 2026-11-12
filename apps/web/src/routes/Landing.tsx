@@ -1,32 +1,29 @@
 import { Link, NavLink } from 'react-router-dom'
 import PlantSVG from '../garden/PlantSVG.tsx'
 
-/** The shared page header. A small test-mode pill keeps the payment mode honest without shouting. */
 export function SandboxBanner() {
   return <SiteHeader />
 }
 
 function SiteHeader() {
   const link = ({ isActive }: { isActive: boolean }) =>
-    `whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+    `site-nav-link whitespace-nowrap px-3 py-1.5 text-sm font-semibold transition-colors ${
       isActive ? 'bg-emerald-100 text-emerald-800' : 'text-slate-600 hover:text-emerald-800'
     }`
+
   return (
-    <header className="border-b border-slate-200/70 bg-white/70 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3">
-        <Link
-          to="/"
-          className="flex items-center gap-2 font-display text-xl font-bold text-emerald-800"
-        >
-          <span aria-hidden>🌱</span> BloomStake
+    <header className="border-b border-slate-200 bg-white">
+      <div className="site-header-inner mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3">
+        <Link to="/" className="site-brand flex items-center font-bold text-emerald-800">
+          BloomStake
         </Link>
-        <nav aria-label="Main" className="flex items-center gap-1">
+        <nav aria-label="Main" className="site-nav flex items-center gap-1">
           <span
             role="status"
             title="Payments run in PayPal's test environment. No real money moves."
-            className="mr-1 hidden rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900 sm:inline"
+            className="sandbox-indicator mr-2 bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900"
           >
-            Test mode
+            PayPal sandbox
           </span>
           <NavLink to="/demo" className={link}>
             Demo
@@ -37,6 +34,9 @@ function SiteHeader() {
           <NavLink to="/about" className={link}>
             About
           </NavLink>
+          <NavLink to="/audit" className={link}>
+            Audit
+          </NavLink>
         </nav>
       </div>
     </header>
@@ -45,39 +45,11 @@ function SiteHeader() {
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-slate-200/70 px-6 py-6 text-center text-xs text-slate-500">
-      <p>
-        © BloomStake ·{' '}
-        <Link to="/about" className="underline hover:text-emerald-800">
-          How it works
-        </Link>
-      </p>
+    <footer className="border-t border-slate-200 px-6 py-5 text-center text-sm text-slate-500">
+      BloomStake <span aria-hidden>·</span> Wellness, with a little more follow-through.
     </footer>
   )
 }
-
-const STEPS = [
-  {
-    icon: '🎯',
-    title: 'Pick a goal',
-    text: 'Steps, water, a healthy meal or a workout. Seven days, one clear rule you read before you commit.',
-  },
-  {
-    icon: '💸',
-    title: 'Put a stake on it',
-    text: 'Stake $20 through PayPal. It is your commitment, held while your plant grows.',
-  },
-  {
-    icon: '📸',
-    title: 'Show your proof',
-    text: 'Upload a screenshot or photo each day. AI reads it, and fixed rules decide if the day counts.',
-  },
-  {
-    icon: '🌸',
-    title: 'Watch it bloom',
-    text: 'Hit your days and the garden blooms and your stake comes back. Miss them and the plant wilts.',
-  },
-]
 
 const STAGES: {
   stage: 'seed' | 'sprout' | 'growing' | 'bloom'
@@ -90,111 +62,78 @@ const STAGES: {
   { stage: 'bloom', vitality: 0.95, label: 'Day 7' },
 ]
 
+const STEPS = [
+  ['01', 'Choose a goal', 'Pick a daily habit and set your target.'],
+  ['02', 'Put a stake on it', 'Commit through PayPal Sandbox.'],
+  ['03', 'Show your progress', 'Share daily proof; AI reads it, fixed rules decide.'],
+  ['04', 'Watch it grow', 'Track your pact as your garden responds.'],
+]
+
 export default function Landing() {
   return (
-    <div className="flex min-h-screen flex-col text-slate-800">
+    <div className="home-shell flex min-h-screen flex-col text-slate-800">
       <SandboxBanner />
-
       <main className="flex-1">
-        <section className="mx-auto grid max-w-5xl items-center gap-10 px-5 pb-10 pt-12 md:grid-cols-2 md:pt-16">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-widest text-emerald-700">
-              Habits with something at stake
+        <section className="home-hero mx-auto grid items-center gap-10 px-5 md:grid-cols-2">
+          <div className="home-copy">
+            <p className="home-eyebrow font-bold uppercase tracking-widest">
+              A little skin in the game
             </p>
-            <h1 className="mt-3 text-4xl font-extrabold leading-tight text-emerald-900 sm:text-5xl">
-              Stake it. Prove it. Grow it.
-            </h1>
-            <p className="mt-4 text-lg text-slate-600">
-              Commit to a seven-day wellness goal with a small PayPal stake. Show proof each day and
-              watch your garden bloom. Our AI reads your proof and fixed rules decide the result, so
-              it is fair every time.
+            <h1 className="home-title font-extrabold text-emerald-900">Make your habits bloom.</h1>
+            <p className="home-description text-slate-600">
+              A seven-day wellness pact: set a goal, put a small stake behind it, and show your
+              progress day by day.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                to="/pact/new"
-                className="rounded-full bg-emerald-600 px-6 py-3 font-bold text-white shadow-sm transition hover:bg-emerald-700"
-              >
+            <div className="home-actions flex flex-wrap gap-3">
+              <Link to="/pact/new" className="button-primary">
                 Start a pact
               </Link>
-              <Link
-                to="/demo"
-                className="rounded-full border-2 border-emerald-600 px-6 py-3 font-bold text-emerald-800 transition hover:bg-emerald-50"
-              >
-                Try the 90-second demo
+              <Link to="/demo" className="button-secondary">
+                See how it works
               </Link>
             </div>
-            <p className="mt-4 text-sm text-slate-500">
-              No sign-up needed. Payments run in test mode, so nothing real is ever charged.
+            <p className="hero-note text-sm text-slate-500">
+              Sandbox payments only. No real money moves.
             </p>
           </div>
 
-          <div
-            className="meadow rounded-3xl border border-slate-200 p-5 shadow-sm"
+          <figure
+            className="home-garden meadow m-0 border border-slate-200 p-5"
             aria-label="A plant growing over seven days"
           >
-            <div className="grid grid-cols-4 gap-1">
-              {STAGES.map((s) => (
-                <figure key={s.stage} className="m-0 text-center">
+            <p className="home-garden-label">One week of showing up</p>
+            <div className="grid grid-cols-4 gap-2">
+              {STAGES.map((item) => (
+                <div key={item.stage} className="text-center">
                   <div className="aspect-[3/4]">
                     <PlantSVG
-                      stage={s.stage}
-                      vitality={s.vitality}
-                      title={`${s.label}: ${s.stage}`}
+                      stage={item.stage}
+                      vitality={item.vitality}
+                      title={`${item.label}: ${item.stage}`}
                     />
                   </div>
-                  <figcaption className="text-xs font-bold text-emerald-900">{s.label}</figcaption>
-                </figure>
+                  <figcaption>{item.label}</figcaption>
+                </div>
               ))}
             </div>
-          </div>
+          </figure>
         </section>
 
-        <section className="mx-auto max-w-5xl px-5 py-10">
-          <h2 className="text-2xl font-bold text-emerald-900">How it works</h2>
-          <ol className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step, index) => (
-              <li
-                key={step.title}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <span aria-hidden className="text-3xl">
-                  {step.icon}
-                </span>
-                <h3 className="mt-3 text-lg font-bold text-slate-800">
-                  {index + 1}. {step.title}
-                </h3>
-                <p className="mt-1 text-sm text-slate-600">{step.text}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        <section className="mx-auto max-w-5xl px-5 pb-14 pt-4">
-          <div className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:grid-cols-3">
-            <div>
-              <h3 className="font-bold text-slate-800">The AI can't be talked into it</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                It only reads what is in your picture. Fixed rules make the call, so a clever note
-                in the photo changes nothing.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-800">Every payment is traceable</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Open the live audit feed to see real PayPal order and capture IDs as they happen.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-800">Fair by design</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Your rule is sealed when you stake, and every payout comes with a plain-language
-                receipt showing the maths.
-              </p>
-            </div>
+        <section className="home-process">
+          <div className="home-process-inner mx-auto max-w-5xl px-5 py-10">
+            <h2 className="home-section-heading font-bold">How BloomStake works</h2>
+            <ol className="process-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {STEPS.map(([number, title, description]) => (
+                <li key={number} className="process-step">
+                  <span className="process-step-number">{number}</span>
+                  <h3 className="font-bold text-slate-800">{title}</h3>
+                  <p className="text-sm text-slate-600">{description}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
       </main>
-
       <SiteFooter />
     </div>
   )
