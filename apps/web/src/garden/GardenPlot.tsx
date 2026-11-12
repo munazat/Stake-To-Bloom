@@ -13,7 +13,10 @@ import { detectWebGL, isLiteMode, prefersReducedMotion } from './capabilities.ts
 
 const Scene3D = lazy(() => import('./Scene3D.tsx'))
 
-class RendererBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+class RendererBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false }
 
   static getDerivedStateFromError() {
@@ -35,19 +38,31 @@ export interface GardenPlotProps {
   caption?: string
 }
 
-export default function GardenPlot({ title, stage, vitality, passedDays, days, caption }: GardenPlotProps) {
+export default function GardenPlot({
+  title,
+  stage,
+  vitality,
+  passedDays,
+  days,
+  caption,
+}: GardenPlotProps) {
   const [webglAvailable, setWebglAvailable] = useState(detectWebGL)
   const [reducedMotion] = useState(prefersReducedMotion)
   const [lite] = useState(() => isLiteMode())
   const handleContextLost = useCallback(() => setWebglAvailable(false), [])
 
   const fallback = (
-    <PlantSVG stage={stage} vitality={vitality} reducedMotion={reducedMotion} title={`${title}: ${stage}`} />
+    <PlantSVG
+      stage={stage}
+      vitality={vitality}
+      reducedMotion={reducedMotion}
+      title={`${title}: ${stage}`}
+    />
   )
 
   return (
     <figure className="m-0 overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-sm">
-      <div className="aspect-square w-full bg-emerald-50/60" data-renderer={webglAvailable ? 'webgl' : 'svg'}>
+      <div className="meadow aspect-square w-full" data-renderer={webglAvailable ? 'webgl' : 'svg'}>
         {webglAvailable ? (
           <RendererBoundary fallback={fallback}>
             <Suspense fallback={fallback}>
