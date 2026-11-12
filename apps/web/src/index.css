@@ -1,22 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800&family=Nunito:wght@500;600;700;800&display=swap');
 @import 'tailwindcss';
 
+/*
+ * Warm, garden-like palette. Remapping the emerald and slate scales here retints
+ * every screen at once: greens become leaf and moss, greys become soil and bark,
+ * and white becomes warm paper.
+ */
+@theme {
+  --font-sans: 'Nunito', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+
+  --color-white: #fffdf7;
+
+  --color-emerald-50: #f5f8e9;
+  --color-emerald-100: #e8f0d0;
+  --color-emerald-200: #d3e3a8;
+  --color-emerald-300: #b5d075;
+  --color-emerald-400: #94b84b;
+  --color-emerald-500: #7aa23a;
+  --color-emerald-600: #5f8a2e;
+  --color-emerald-700: #4b7026;
+  --color-emerald-800: #3b5a22;
+  --color-emerald-900: #2c441b;
+
+  --color-slate-50: #fbf6ec;
+  --color-slate-100: #f3ead8;
+  --color-slate-200: #e8d8bc;
+  --color-slate-300: #d4c0a0;
+  --color-slate-400: #a8967f;
+  --color-slate-500: #85735e;
+  --color-slate-600: #6f5d49;
+  --color-slate-700: #4f4132;
+  --color-slate-800: #2c2418;
+  --color-slate-900: #1f1910;
+}
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
+  --bg: #f8f1e4;
+  --ink: #2c2418;
   --soil: #4b3b2a;
-  --leaf: #4caf50;
-  --bloom: #ff80ab;
+  --leaf: #5f8a2e;
+  --bloom: #e8738f;
   --wilt: #b0894f;
+  --sun: #e3ab25;
+  --clay: #d96d20;
 }
 
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--bg);
 }
 
 body {
   margin: 0;
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.75), transparent 28%),
+    linear-gradient(180deg, #fbf5e9 0%, #f4ead4 100%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.meadow {
+  background:
+    radial-gradient(ellipse at 50% 108%, #8fb04f 0%, #a8c46a 34%, transparent 62%),
+    linear-gradient(180deg, #fdf6e3 0%, #f1ecc9 55%, #dfe7b4 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
