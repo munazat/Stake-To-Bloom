@@ -528,22 +528,31 @@ export default function PactNew() {
                   ) : null}
                 </ul>
 
-                <div className="mt-4">
-                  <span className="block text-sm font-semibold text-slate-600">
-                    sha256(canonicalJson(ruleSpec)) — preview
-                  </span>
-                  <code className="mt-1 block break-all rounded-lg bg-slate-900 px-3 py-2 font-mono text-xs text-emerald-300">
-                    {previewHash ?? 'hashing…'}
-                  </code>
-                </div>
-
-                <details className="mt-3">
-                  <summary className="cursor-pointer text-xs font-semibold text-slate-500">
-                    Show the exact JSON that gets hashed
+                <details className="mt-4 rounded-lg border border-slate-200 px-3 py-2">
+                  <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+                    Rule fingerprint (technical details)
                   </summary>
-                  <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-100 p-3 font-mono text-xs text-slate-700">
-                    {canonicalJson(spec)}
-                  </pre>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Locking this contract seals these exact rules with a fingerprint, so they cannot
+                    be changed afterwards.
+                  </p>
+                  <div className="mt-4">
+                    <span className="block text-sm font-semibold text-slate-600">
+                      sha256(canonicalJson(ruleSpec)) — preview
+                    </span>
+                    <code className="mt-1 block break-all rounded-lg bg-slate-900 px-3 py-2 font-mono text-xs text-emerald-300">
+                      {previewHash ?? 'hashing…'}
+                    </code>
+                  </div>
+
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-xs font-semibold text-slate-500">
+                      Show the exact JSON that gets hashed
+                    </summary>
+                    <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-100 p-3 font-mono text-xs text-slate-700">
+                      {canonicalJson(spec)}
+                    </pre>
+                  </details>
                 </details>
               </>
             ) : (
