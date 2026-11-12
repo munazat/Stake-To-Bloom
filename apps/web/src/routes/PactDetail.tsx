@@ -323,8 +323,8 @@ export default function PactDetailRoute() {
                   Guided demo · simulated stakes only
                 </p>
                 <p className="mt-1 text-sm text-violet-900">
-                  Submit one real proof before the first fast-forward. Then Mia’s remaining days are
-                  simulated as passed; Omar’s and Zed’s are simulated as missed. No AI or money call
+                  Submit one real proof before the first fast-forward. Then your remaining days and Mia’s
+                  are simulated as passed; Omar’s and Zed’s are simulated as missed. No AI or money call
                   is made for simulated days.
                 </p>
                 <button
