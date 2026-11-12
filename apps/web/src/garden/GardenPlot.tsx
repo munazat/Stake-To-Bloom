@@ -78,9 +78,9 @@ export default function GardenPlot({
       <div
         className="absolute"
         style={{
-          left: '23%',
-          top: '16%',
-          width: '54%',
+          left: '19%',
+          top: '11%',
+          width: '62%',
           aspectRatio: '1 / 1',
           filter: 'drop-shadow(0 4px 5px rgba(30,20,10,0.35))',
         }}
