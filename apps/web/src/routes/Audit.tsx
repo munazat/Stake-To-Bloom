@@ -26,7 +26,7 @@ export default function Audit() {
         </Link>
         <h1 className="mt-3 text-2xl font-extrabold text-emerald-800">PayPal audit feed</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Every PayPal call and webhook for your pacts, with the real sandbox ids. Refreshes every
+          Every PayPal call and webhook for your pacts, with the real PayPal ids. Refreshes every
           few seconds. The AI never appears here: it cannot move money.
         </p>
 

@@ -110,7 +110,7 @@ export default function StakeButton({ pactId, stakeCents, onFunded }: Props) {
         ? 'Confirming your payment…'
         : phase === 'paying'
           ? 'Waiting for PayPal…'
-          : `Stake ${formatUsd(stakeCents)} with PayPal (sandbox)`
+          : `Stake ${formatUsd(stakeCents)} with PayPal`
 
   return (
     <div className="mt-3">
@@ -128,7 +128,7 @@ export default function StakeButton({ pactId, stakeCents, onFunded }: Props) {
         </p>
       )}
       <p className="mt-2 text-xs text-slate-500">
-        Sandbox only: pay with a PayPal sandbox buyer account. No real money moves.
+        Test mode: pay with a PayPal sandbox buyer account. No real money moves.
       </p>
     </div>
   )

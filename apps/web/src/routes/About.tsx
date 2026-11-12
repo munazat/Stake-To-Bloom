@@ -47,7 +47,7 @@ export default function AboutRoute() {
           ; BloomStake’s money, referee gate, and settlement code are written for this project.
         </p>
         <p className="mt-8 text-xs text-slate-500">
-          MIT License · Hackathon prototype · Sandbox only
+          © BloomStake · MIT License
         </p>
       </main>
     </div>
