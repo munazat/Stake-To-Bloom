@@ -105,3 +105,22 @@ Deno.test('check mode only reads: it never captures, and funds only an already-p
   assert.deepEqual(b, { status: 'ACTIVE', funded: true, alreadyFunded: false })
   assert.deepEqual(paid.paypal.calls, ['get'])
 })
+
+Deno.test('a capture that lands after the pact expired is refunded once and audited', async () => {
+  const { paypal, events, funding, deps } = setup()
+  funding.saveCaptureResult = { kind: 'wrong_status', status: 'EXPIRED' }
+  await assert.rejects(
+    captureFlow(deps, USER, ORDER, 'capture'),
+    (e) => status(e) === 409 && (e as HttpError).code === 'late_payment_refunded',
+  )
+  assert.deepEqual(paypal.calls, ['capture', 'refund'])
+  assert.equal(events.rows.at(-1)?.eventType, 'LATE_CAPTURE.REFUNDED')
+  assert.equal(funding.ledger.length, 0) // never reached the ledger
+})
+
+Deno.test('a late capture on a pact in any other state is NOT refunded automatically', async () => {
+  const { paypal, funding, deps } = setup()
+  funding.saveCaptureResult = { kind: 'wrong_status', status: 'SETTLED_PASS' }
+  await assert.rejects(captureFlow(deps, USER, ORDER, 'capture'), (e) => status(e) === 409)
+  assert.deepEqual(paypal.calls, ['capture'])
+})
