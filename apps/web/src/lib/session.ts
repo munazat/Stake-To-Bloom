@@ -29,8 +29,18 @@ export async function ensureSession(): Promise<Session> {
     // still looks valid here. getUser() is the call that actually checks. Without
     // it the dead token is handed to every request, each one fails with 401, and
     // the browser can never recover on its own.
-    const { error } = await supabase.auth.getUser()
-    if (!error) return data.session
+    const { data: userData, error } = await supabase.auth.getUser()
+    if (!error) {
+      // A guest created before the database was ready can be valid yet have no
+      // profile row, which breaks every pact write. Such a session is replaced by
+      // a fresh guest. A failed lookup (offline) keeps the session as it is.
+      const profile = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', userData.user.id)
+        .maybeSingle()
+      if (profile.error || profile.data) return data.session
+    }
     // 'local' because the server-side token is already gone: a global sign-out
     // would be a revocation request that cannot succeed.
     await supabase.auth.signOut({ scope: 'local' })
