@@ -10,8 +10,8 @@ const handler = async (request: Request) => {
   const admin = serviceClient()
   const userId = await requireUserId(request, admin)
   const { pool_id: poolId } = Body.parse(await readJsonBody(request))
-  await enforceCounter(admin, { scope: 'USER', value: userId, limit: 20 })
-  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 30 })
+  await enforceCounter(admin, { scope: 'USER', value: userId, limit: 60 })
+  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 600 })
 
   const { data: owner, error: ownerError } = await admin
     .from('pacts')

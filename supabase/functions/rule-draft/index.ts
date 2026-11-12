@@ -41,7 +41,7 @@ const handler = async (request: Request): Promise<Response> => {
   const admin = serviceClient()
   const userId = await requireUserId(request, admin)
   await enforceCounter(admin, { scope: 'USER', value: userId, limit: 5 })
-  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 20 })
+  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 60 })
   const body = RequestSchema.parse(await readJsonBody(request))
   try {
     localDateKey(new Date(), body.tz)

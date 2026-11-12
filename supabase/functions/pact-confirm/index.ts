@@ -19,7 +19,7 @@ const handler = async (request: Request): Promise<Response> => {
   const userId = await requireUserId(request, admin)
   const { pact_id } = RequestSchema.parse(await readJsonBody(request))
   await enforceCounter(admin, { scope: 'USER', value: userId, limit: 10 })
-  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 30 })
+  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 200 })
 
   const { data: pact, error } = await admin
     .from('pacts')

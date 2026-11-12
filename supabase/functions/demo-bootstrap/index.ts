@@ -12,9 +12,6 @@ const handler = async (request: Request) => {
   await admin
     .from('profiles')
     .upsert({ user_id: userId, is_guest: true }, { onConflict: 'user_id', ignoreDuplicates: true })
-  await enforceCounter(admin, { scope: 'USER', value: userId, limit: 3 })
-  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 10 })
-
   const existing = await admin
     .from('pacts')
     .select('id,pool_id')
@@ -31,6 +28,11 @@ const handler = async (request: Request) => {
       poolId: existing.data.pool_id,
       existing: true,
     })
+
+  // Only a brand-new demo counts against the daily limit; reopening one never does.
+  // The IP limit is generous because judges often share one office or campus address.
+  await enforceCounter(admin, { scope: 'USER', value: userId, limit: 10 })
+  await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 200 })
 
   const { data: pool, error: poolError } = await admin
     .from('pools')
