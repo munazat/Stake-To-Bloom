@@ -45,9 +45,8 @@ export default function AdminRoute() {
       <SandboxBanner />
       <main className="mx-auto max-w-xl px-5 py-10">
         <h1 className="text-2xl font-bold">Operations</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Maintenance tools for the project team. Access requires a secret that is entered here at
-          runtime and is never stored.
+        <p className="mt-2 text-base text-slate-600">
+          Restricted maintenance tools. Your secret is used for this session only.
         </p>
         <label className="mt-5 block text-sm font-semibold">
           Admin secret

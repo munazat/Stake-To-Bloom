@@ -57,7 +57,7 @@ export default function Garden() {
   }, [queryClient])
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-emerald-50 to-white text-slate-800">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800">
       <SandboxBanner />
 
       <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-10">
@@ -68,16 +68,16 @@ export default function Garden() {
         <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-emerald-800">
           Your garden
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Every verified day makes a plant grow. A missed day makes it droop. Your plants are shown
-          exactly as the server records them.
+        <p className="mt-1 text-base text-slate-600">
+          Your plants reflect the progress recorded for each pact.
         </p>
 
         {!isSupabaseConfigured ? (
-          <p role="alert" className="mt-6 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and set{' '}
-            <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>, then restart the
-            dev server.
+          <p
+            role="alert"
+            className="mt-6 border-l-4 border-rose-500 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+          >
+            Connect Supabase to load your garden.
           </p>
         ) : plots.isPending ? (
           <p role="status" className="mt-8 text-sm text-slate-500">
@@ -88,10 +88,8 @@ export default function Garden() {
             {(plots.error as Error).message}
           </p>
         ) : plots.data.length === 0 ? (
-          <div className="mt-8 rounded-xl border border-dashed border-emerald-300 bg-white p-8 text-center">
-            <p className="text-sm text-slate-600">
-              No pacts yet. Lock a contract to prepare your first plot.
-            </p>
+          <div className="mt-8 border-t border-slate-200 py-8">
+            <p className="text-base text-slate-600">Your garden is ready for its first pact.</p>
             <Link
               to="/pact/new"
               className="mt-4 inline-block rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"

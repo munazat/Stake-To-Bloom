@@ -18,20 +18,22 @@ export default function Audit() {
   })
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-emerald-50 to-white text-slate-800">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800">
       <SandboxBanner />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
         <Link to="/garden" className="text-sm font-medium text-emerald-700 hover:underline">
           ← Garden
         </Link>
-        <h1 className="mt-3 text-2xl font-extrabold text-emerald-800">PayPal audit feed</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Every PayPal call and webhook for your pacts, with the real PayPal ids. Refreshes every
-          few seconds. The AI never appears here: it cannot move money.
+        <h1 className="mt-3 text-3xl font-extrabold text-emerald-800">Payment activity</h1>
+        <p className="mt-2 text-base text-slate-600">
+          Verified PayPal events for your pacts. Updates every few seconds.
         </p>
 
         {!isSupabaseConfigured ? (
-          <p role="alert" className="mt-6 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <p
+            role="alert"
+            className="mt-6 border-l-4 border-rose-500 bg-rose-50 px-4 py-3 text-base text-rose-800"
+          >
             Supabase is not configured.
           </p>
         ) : query.isPending ? (
@@ -43,16 +45,25 @@ export default function Audit() {
             {(query.error as Error).message}
           </p>
         ) : query.data.length === 0 ? (
-          <p className="mt-6 text-sm text-slate-500">No PayPal activity yet. Stake a pact to see it here.</p>
+          <p className="mt-6 text-sm text-slate-500">
+            No PayPal activity yet. Stake a pact to see it here.
+          </p>
         ) : (
-          <ul className="mt-5 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white" aria-label="PayPal events">
+          <ul
+            className="mt-6 divide-y divide-slate-200 border-y border-slate-200"
+            aria-label="PayPal events"
+          >
             {query.data.map((e) => (
               <li key={e.id} className="px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-slate-800">{e.eventType}</span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">{e.source}</span>
+                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                    {e.source}
+                  </span>
                   {e.verified && (
-                    <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">verified</span>
+                    <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                      verified
+                    </span>
                   )}
                   {e.status && <span className="text-xs text-slate-500">{e.status}</span>}
                   {e.amountCents !== null && (

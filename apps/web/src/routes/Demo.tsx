@@ -11,39 +11,37 @@ export default function DemoRoute() {
     onSuccess: (demo) => navigate(`/pact/${demo.pactId}`),
   })
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white text-slate-800">
+    <div className="min-h-screen bg-slate-50 text-slate-800">
       <SandboxBanner />
       <main className="mx-auto max-w-2xl px-5 py-10">
         <Link to="/" className="text-sm text-emerald-800 hover:underline">
           ← BloomStake
         </Link>
-        <h1 className="mt-5 text-3xl font-extrabold text-emerald-900">The 90-second guided demo</h1>
-        <p className="mt-3 text-slate-600">
-          See how a wellness pact grows a garden and how the stakes are shared out at the end.
-          Everything here is simulated, so no real money moves.
+        <h1 className="mt-5 text-3xl font-extrabold text-emerald-900">See a pact in action</h1>
+        <p className="mt-3 text-base text-slate-600">
+          Follow a sample wellness pact from proof to garden. Stakes are simulated.
         </p>
-        <ol className="mt-6 space-y-4 rounded-2xl border border-emerald-100 bg-white p-5">
-          <li>
-            <strong>1. Plant your seed.</strong> Start a demo pool with Mia (passes), Omar and Zed
-            (miss). All four stakes are simulated.
+        <ol className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
+          <li className="py-4 first:pt-0">
+            <strong>1. Start a sample pool.</strong> See three simulated participants and their
+            pacts.
           </li>
-          <li>
-            <strong>2. Submit one real proof.</strong> The first day uses the normal image pipeline
-            and the fixed rules. You can use the generated sample image.
+          <li className="py-4">
+            <strong>2. Submit one proof.</strong> Use your own image or a generated sample.
           </li>
-          <li>
-            <strong>3. Fast-forward.</strong> Once your real proof passes, advance the rest of the
-            pool. Simulated days make no AI or payment call.
+          <li className="py-4 last:pb-0">
+            <strong>3. Advance the week.</strong> Simulated days show how the garden changes without
+            extra AI or payment calls.
           </li>
         </ol>
-        <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          Clearing site data loses this demo garden. Your guest session is stored in this browser.
+        <p className="mt-4 text-sm text-slate-500">
+          Demo data is saved to this browser session. No real money moves.
         </p>
         <button
           type="button"
           disabled={!isSupabaseConfigured || start.isPending}
           onClick={() => start.mutate()}
-          className="mt-6 rounded-full bg-emerald-700 px-6 py-3 font-semibold text-white disabled:opacity-50"
+          className="mt-7 bg-emerald-800 px-5 py-3 font-semibold text-white disabled:opacity-50"
         >
           {start.isPending ? 'Planting demo…' : 'Start the demo'}
         </button>

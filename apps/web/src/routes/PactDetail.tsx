@@ -132,7 +132,7 @@ function Timeline({ detail, today }: { detail: PactDetail; today: number | null 
             className={`rounded-lg border px-1 py-2 text-center text-xs ${DAY_STYLE[status]} ${today === i ? 'ring-2 ring-emerald-500' : ''}`}
           >
             <div className="font-semibold">Day {i + 1}</div>
-            <div className="mt-0.5 text-[10px] uppercase tracking-wide">
+            <div className="mt-0.5 text-xs uppercase tracking-wide">
               {day?.demoSimulated
                 ? 'Simulated'
                 : status === 'PENDING' && today === i
@@ -258,9 +258,9 @@ export default function PactDetailRoute() {
   const sandbox = (import.meta.env.VITE_APP_ENV ?? 'sandbox') === 'sandbox'
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-emerald-50 to-white text-slate-800">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800">
       <SandboxBanner />
-      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-8">
+      <main className="pact-detail-main mx-auto w-full max-w-4xl flex-1 px-6 py-10">
         <Link to="/garden" className="text-sm font-medium text-emerald-700 hover:underline">
           ← Garden
         </Link>
@@ -285,24 +285,27 @@ export default function PactDetailRoute() {
         ) : (
           <>
             <h1 className="mt-3 text-2xl font-extrabold text-emerald-800">{detail.title}</h1>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-2 text-base text-slate-600">
               {formatUsd(detail.stakeCents)} {detail.currency} · {detail.requiredPasses} of{' '}
               {detail.days} days to pass · {detail.status.replace(/_/g, ' ').toLowerCase()}
               {detail.isDemo ? ' · demo player' : ''}
               {detail.isSimulated ? ' · simulated stake (no money moved)' : ''}
             </p>
 
-            <div className="mt-4 max-w-xs">
-              <GardenPlot
-                title={detail.title}
-                stage={stage}
-                vitality={detail.vitality}
-                passedDays={passedDays}
-                days={detail.days}
-              />
+            <div className="pact-overview mt-7">
+              <div className="max-w-xs">
+                <GardenPlot
+                  title={detail.title}
+                  stage={stage}
+                  vitality={detail.vitality}
+                  passedDays={passedDays}
+                  days={detail.days}
+                />
+              </div>
+              <div>
+                <Timeline detail={detail} today={today} />
+              </div>
             </div>
-
-            <Timeline detail={detail} today={today} />
 
             {detail.isDemo && detail.demoRole === 'OWNER' && detail.poolId && (
               <section

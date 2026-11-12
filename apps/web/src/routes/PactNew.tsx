@@ -38,31 +38,26 @@ const STEP_LABELS = ['Goal', 'Terms', 'Your rules'] as const
 
 const GOAL_TILES: ReadonlyArray<{
   key: TemplateGoal
-  emoji: string
   label: string
   blurb: string
 }> = [
   {
     key: 'steps',
-    emoji: '👟',
     label: 'Steps',
     blurb: 'A daily step count at or above your target.',
   },
   {
     key: 'water',
-    emoji: '💧',
     label: 'Water',
     blurb: 'A daily volume of water at or above your target.',
   },
   {
     key: 'meal',
-    emoji: '🥗',
     label: 'Healthy meal',
     blurb: 'A photo of a balanced meal, with the daily code in frame.',
   },
   {
     key: 'workout',
-    emoji: '🏋️',
     label: 'Workout',
     blurb: 'A photo of an active session at or above your target minutes.',
   },
@@ -193,7 +188,7 @@ export default function PactNew() {
   const hashMismatch = Boolean(pact && previewHash && pact.ruleHash !== previewHash)
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-emerald-50 to-white text-slate-800">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-800">
       <SandboxBanner />
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-10">
@@ -204,17 +199,19 @@ export default function PactNew() {
         <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-emerald-800">
           Create a pact
         </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Seven days, {formatUsd(stakeCents)} on the line. The rule you finish with is the rule you
-          are shown, and it is sealed the moment you lock it.
+        <p className="mt-2 text-base text-slate-600">
+          Set your goal and stake, then review the exact rule before locking your pact.
         </p>
 
-        <ol className="mt-6 flex gap-2" aria-label="Progress">
+        <ol
+          className="wizard-progress mt-8 flex gap-0 border-b border-slate-200"
+          aria-label="Progress"
+        >
           {STEP_LABELS.map((label, index) => (
             <li
               key={label}
               aria-current={index === step ? 'step' : undefined}
-              className={`flex-1 rounded-lg px-3 py-2 text-center text-xs font-semibold ${
+              className={`flex-1 border-b-2 px-3 py-3 text-left text-sm font-semibold ${
                 index === step
                   ? 'bg-emerald-600 text-white'
                   : index < step
@@ -228,10 +225,11 @@ export default function PactNew() {
         </ol>
 
         {!isSupabaseConfigured ? (
-          <p role="alert" className="mt-6 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and set{' '}
-            <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>, then restart the
-            dev server.
+          <p
+            role="alert"
+            className="mt-6 border-l-4 border-rose-500 bg-rose-50 px-4 py-3 text-base text-rose-800"
+          >
+            Connect Supabase to create a saved pact.
           </p>
         ) : null}
 
@@ -286,23 +284,25 @@ export default function PactNew() {
         ) : step === 0 ? (
           <section className="mt-6">
             <div className="grid gap-3 sm:grid-cols-2">
-              {GOAL_TILES.map((tile) => (
+              {GOAL_TILES.map((tile, index) => (
                 <button
                   key={tile.key}
                   type="button"
                   onClick={() => pickGoal(tile.key)}
                   aria-pressed={goalType === tile.key}
-                  className={`rounded-xl border p-4 text-left transition ${
+                  className={`goal-choice border p-5 text-left transition ${
                     goalType === tile.key
                       ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200'
                       : 'border-slate-200 bg-white hover:border-emerald-300'
                   }`}
                 >
-                  <span aria-hidden className="text-2xl">
-                    {tile.emoji}
+                  <span aria-hidden className="goal-choice-index">
+                    {String(index + 1).padStart(2, '0')}
                   </span>
-                  <span className="mt-2 block font-semibold text-slate-800">{tile.label}</span>
-                  <span className="mt-1 block text-xs text-slate-500">{tile.blurb}</span>
+                  <span className="mt-3 block text-lg font-semibold text-slate-800">
+                    {tile.label}
+                  </span>
+                  <span className="mt-1 block text-sm text-slate-500">{tile.blurb}</span>
                 </button>
               ))}
             </div>
@@ -317,8 +317,8 @@ export default function PactNew() {
                   : 'border-dashed border-slate-300 bg-slate-50 hover:border-emerald-300'
               }`}
             >
-              <span className="block font-semibold text-slate-800">✨ Custom goal</span>
-              <span className="mt-1 block text-xs text-slate-500">
+              <span className="block font-semibold text-slate-800">Custom goal</span>
+              <span className="mt-1 block text-sm text-slate-500">
                 Describe any habit in your own words. The AI proposes the checks; you read the
                 contract and confirm it.
               </span>
@@ -392,10 +392,7 @@ export default function PactNew() {
               </div>
             </Group>
 
-            <Field
-              label="Stake"
-              hint="Locked for the whole pact. Pass and you get it back plus a share of the forfeits."
-            >
+            <Field label="Stake" hint="Held while your pact is active.">
               <div className="mt-1 flex items-center gap-3">
                 <input
                   type="range"
