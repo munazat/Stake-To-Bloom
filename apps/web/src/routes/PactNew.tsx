@@ -17,7 +17,6 @@ import {
   RuleSpecSchema,
   STAKE_CENTS_MAX,
   STAKE_CENTS_MIN,
-  canonicalJson,
   formatUsd,
   ruleHash,
   type RuleSpec,
@@ -35,7 +34,7 @@ import { SandboxBanner, SiteFooter } from './Landing.tsx'
 
 type GoalChoice = TemplateGoal | 'custom'
 
-const STEP_LABELS = ['Goal', 'Terms', 'Rule Contract'] as const
+const STEP_LABELS = ['Goal', 'Terms', 'Your rules'] as const
 
 const GOAL_TILES: ReadonlyArray<{
   key: TemplateGoal
@@ -238,10 +237,10 @@ export default function PactNew() {
 
         {pact ? (
           <section className="mt-6 rounded-xl border border-emerald-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-emerald-800">Contract locked</h2>
+            <h2 className="text-xl font-bold text-emerald-800">Your pact is ready</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Stored with status <strong>{pact.status}</strong>. Nothing has been charged yet — the
-              stake is captured when you fund it.
+              Your pact is saved. Nothing has been charged yet; the stake is taken when you confirm
+              the payment.
             </p>
 
             {hashMismatch ? (
@@ -249,20 +248,12 @@ export default function PactNew() {
                 role="alert"
                 className="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-800"
               >
-                The stored hash does not match the one previewed here. Do not fund this pact.
+                Something went wrong while saving your rules. Please do not continue; start a new
+                pact.
               </p>
-            ) : (
-              <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                The server stored the same hash this page previewed, so the contract you read is the
-                contract that will be applied.
-              </p>
-            )}
+            ) : null}
 
             <dl className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between gap-4">
-                <dt className="font-semibold text-slate-600">Pact</dt>
-                <dd className="font-mono text-xs text-slate-500">{pact.id}</dd>
-              </div>
               <div className="flex justify-between gap-4">
                 <dt className="font-semibold text-slate-600">Goal</dt>
                 <dd>{pact.title}</dd>
@@ -284,13 +275,6 @@ export default function PactNew() {
                 <dd>{pact.tz}</dd>
               </div>
             </dl>
-
-            <div className="mt-4">
-              <span className="block text-sm font-semibold text-slate-600">rule_hash</span>
-              <code className="mt-1 block break-all rounded-lg bg-slate-900 px-3 py-2 font-mono text-xs text-emerald-300">
-                {pact.ruleHash}
-              </code>
-            </div>
 
             <Link
               to="/garden"
@@ -468,10 +452,9 @@ export default function PactNew() {
           </section>
         ) : (
           <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-800">Rule Contract</h2>
+            <h2 className="text-xl font-bold text-slate-800">Your rules</h2>
             <p className="mt-1 text-sm text-slate-600">
-              This is the whole deal, in the exact form that gets hashed. After you lock it, the
-              database rejects any edit to the rule, the hash or the stake.
+              This is your deal. Once you lock it, the rules and the stake can't be changed.
             </p>
 
             {spec ? (
@@ -527,33 +510,6 @@ export default function PactNew() {
                     </li>
                   ) : null}
                 </ul>
-
-                <details className="mt-4 rounded-lg border border-slate-200 px-3 py-2">
-                  <summary className="cursor-pointer text-sm font-semibold text-slate-600">
-                    Rule fingerprint (technical details)
-                  </summary>
-                  <p className="mt-2 text-xs text-slate-500">
-                    Locking this contract seals these exact rules with a fingerprint, so they cannot
-                    be changed afterwards.
-                  </p>
-                  <div className="mt-4">
-                    <span className="block text-sm font-semibold text-slate-600">
-                      sha256(canonicalJson(ruleSpec)) — preview
-                    </span>
-                    <code className="mt-1 block break-all rounded-lg bg-slate-900 px-3 py-2 font-mono text-xs text-emerald-300">
-                      {previewHash ?? 'hashing…'}
-                    </code>
-                  </div>
-
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-xs font-semibold text-slate-500">
-                      Show the exact JSON that gets hashed
-                    </summary>
-                    <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-100 p-3 font-mono text-xs text-slate-700">
-                      {canonicalJson(spec)}
-                    </pre>
-                  </details>
-                </details>
               </>
             ) : (
               <>
@@ -573,8 +529,8 @@ export default function PactNew() {
 
             {isCustom && draft ? (
               <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-900">
-                Drafted by AI. Read every line: the AI proposes, you decide, and the server froze
-                this exact text and hash.
+                Drafted by AI. Read every line: the AI proposes, you decide, and the server seals
+                this exact text.
               </p>
             ) : null}
 

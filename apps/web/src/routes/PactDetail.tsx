@@ -336,8 +336,7 @@ export default function PactDetailRoute() {
             {detail.status === 'AWAITING_STAKE' && (
               <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-900">
                 <p>
-                  This pact is waiting for its stake. Proofs open once the sandbox payment is
-                  confirmed.
+                  This pact is waiting for its stake. Proofs open once your payment is confirmed.
                 </p>
                 <StakeButton
                   pactId={detail.id}
@@ -419,9 +418,8 @@ export default function PactDetailRoute() {
                 )}
 
                 <p className="mt-3 text-xs text-slate-400">
-                  Demo uses sandbox money. Do not upload personal photos. Images are processed by
-                  Google’s Gemini API under its free-tier terms, which may allow review and product
-                  improvement.
+                  Please do not upload personal photos. Images are processed by Google’s Gemini API
+                  under its free-tier terms, which may allow review and product improvement.
                 </p>
 
                 {sandbox && canUpload && (
@@ -519,15 +517,8 @@ export default function PactDetailRoute() {
                     PayPal batch: <code>{detail.settlement.payoutBatchId}</code>
                   </p>
                 )}
-                <p className="mt-2 break-all text-xs">
-                  Frozen rule hash: <code>{detail.ruleHash}</code>
-                </p>
               </section>
             )}
-
-            <p className="mt-8 break-all text-xs text-slate-400">
-              Rule contract hash (frozen at funding): <code>{detail.ruleHash}</code>
-            </p>
           </>
         )}
       </main>

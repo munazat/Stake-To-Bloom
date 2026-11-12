@@ -50,36 +50,21 @@ describe('PactNew wizard', () => {
     expect(screen.getByRole('button', { name: /Custom goal/i })).toBeInTheDocument()
   })
 
-  it('previews the same contract hash the Edge Function stores', async () => {
+  it('shows the rules in plain language and keeps technical hashes out of sight', async () => {
     renderWizard()
     await goToContract()
-    // stepsSpec() at its defaults, captured from pacts.rule_hash on the local stack.
-    expect(
-      await screen.findByText('40469b9d5599712666c7993f03287ef1896f46c4ce27f03d2b3d5ac458f91300'),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /^Your rules$/ })).toBeInTheDocument()
+    expect(screen.queryByText(/sha256|rule_hash|fingerprint|canonicalJson/i)).toBeNull()
+    expect(screen.queryByText(/[0-9a-f]{64}/)).toBeNull()
   })
 
-  it('switching goal rebuilds the contract and its hash', async () => {
+  it('switching goal rebuilds the rules', async () => {
     renderWizard()
     fireEvent.click(screen.getByRole('button', { name: /Water/ }))
     await goToContract()
-    // The title also appears inside the canonical JSON preview, so match the heading.
     expect(
       await screen.findByRole('heading', { name: /Drink 2500 ml of water/ }),
     ).toBeInTheDocument()
-    expect(
-      await screen.findByText('8f75f7027ef2ec85fc7178537439fb17b3dd0572f73a684389541518e9b9eda2'),
-    ).toBeInTheDocument()
-  })
-
-  it('shows the exact JSON that will be hashed', async () => {
-    renderWizard()
-    await goToContract()
-    fireEvent.click(screen.getByText(/Show the exact JSON/i))
-    const pre = await screen.findByText(/"goalType":"steps"/)
-    // canonicalJson sorts keys, so checks comes before goalType in the output.
-    expect(pre.textContent?.startsWith('{"checks":')).toBe(true)
-    expect(pre.textContent).toContain('"requiredPasses":5')
   })
 
   it('warns that nothing can be saved until Supabase is configured', () => {
