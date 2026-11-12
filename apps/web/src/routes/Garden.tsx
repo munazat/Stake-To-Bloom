@@ -11,9 +11,11 @@ import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatUsd, type PactStatus } from '@bloomstake/core'
 import GardenPlot from '../garden/GardenPlot.tsx'
+import PlantSVG from '../garden/PlantSVG.tsx'
 import { fetchPlots, subscribeToPlots } from '../lib/garden.ts'
 import { isSupabaseConfigured } from '../lib/config.ts'
 import { SandboxBanner, SiteFooter } from './Landing.tsx'
+import PageHeading from '../components/PageHeading.tsx'
 
 // An unfunded pact and a freshly planted one are both the "seed" stage, so the
 // stage alone cannot tell the user whether their stake is locked. ACTIVE is left
@@ -65,12 +67,9 @@ export default function Garden() {
           ← Back
         </Link>
 
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-emerald-800">
-          Your garden
-        </h1>
-        <p className="mt-1 text-base text-slate-600">
-          Your plants reflect the progress recorded for each pact.
-        </p>
+        <PageHeading icon="🌿" tone="mint" title="Your garden">
+          <p>Your plants reflect the progress recorded for each pact.</p>
+        </PageHeading>
 
         {!isSupabaseConfigured ? (
           <p
@@ -89,6 +88,9 @@ export default function Garden() {
           </p>
         ) : plots.data.length === 0 ? (
           <div className="mt-8 border-t border-slate-200 py-8">
+            <div className="mb-3 h-28 w-28">
+              <PlantSVG stage="seed" vitality={0.1} title="A seed waiting for your first pact" />
+            </div>
             <p className="text-base text-slate-600">Your garden is ready for its first pact.</p>
             <Link
               to="/pact/new"

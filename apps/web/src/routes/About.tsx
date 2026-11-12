@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { SandboxBanner, SiteFooter } from './Landing.tsx'
+import PageHeading from '../components/PageHeading.tsx'
 
 export default function AboutRoute() {
   return (
@@ -9,13 +10,14 @@ export default function AboutRoute() {
         <Link to="/" className="text-sm font-semibold text-emerald-800 hover:underline">
           BloomStake
         </Link>
-        <h1 className="mt-5 text-3xl font-extrabold text-emerald-900">A promise you can see.</h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-slate-600">
-          BloomStake turns a seven-day wellness goal into a pact: set a rule, share daily proof, and
-          watch your garden reflect your progress.
-        </p>
+        <PageHeading icon="🌼" tone="sun" title="A promise you can see." className="mt-5">
+          <p>
+            BloomStake turns a seven-day wellness goal into a pact: set a rule, share daily proof,
+            and watch your garden reflect your progress.
+          </p>
+        </PageHeading>
 
-        <div className="mt-10 divide-y divide-slate-200 border-y border-slate-200">
+        <div className="about-sections mt-10 divide-y divide-slate-200 border-y border-slate-200">
           <section className="py-6">
             <h2 className="text-xl font-bold">How progress is judged</h2>
             <p className="mt-2 text-base text-slate-600">

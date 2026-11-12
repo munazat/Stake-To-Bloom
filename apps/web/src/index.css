@@ -228,6 +228,120 @@ button:disabled {
   letter-spacing: 0.12em;
 }
 
+.goal-choice-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 14px;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.goal-choice-icon--steps {
+  background: #d9f4e2;
+}
+
+.goal-choice-icon--water {
+  background: #d9f1f7;
+}
+
+.goal-choice-icon--meal {
+  background: #ffe0d8;
+}
+
+.goal-choice-icon--workout {
+  background: #ebe2ff;
+}
+
+.goal-choice-icon--custom {
+  background: #ffedbb;
+}
+
+.custom-goal-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-radius: 12px !important;
+  border-color: #edcba5 !important;
+  background: #fff8ec !important;
+}
+
+.custom-goal-choice[aria-pressed='true'] {
+  border-color: #e59b61 !important;
+  background: #fff0dc !important;
+}
+
+.demo-steps li {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.demo-steps strong {
+  color: var(--ink);
+}
+
+.demo-step-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 13px;
+  font-size: 1.2rem;
+}
+
+.demo-step-icon--mint {
+  background: #d9f4e2;
+}
+
+.demo-step-icon--coral {
+  background: #ffe0d8;
+}
+
+.demo-step-icon--sky {
+  background: #d9f1f7;
+}
+
+.audit-event {
+  border-left: 4px solid #54b982;
+  padding-left: 16px !important;
+}
+
+.audit-event:nth-child(3n + 2) {
+  border-left-color: #f18b6b;
+}
+
+.audit-event:nth-child(3n) {
+  border-left-color: #66bcd3;
+}
+
+.about-sections > section {
+  position: relative;
+  padding-left: 18px;
+}
+
+.about-sections > section::before {
+  position: absolute;
+  top: 27px;
+  bottom: 27px;
+  left: 0;
+  width: 4px;
+  border-radius: 5px;
+  background: #54b982;
+  content: '';
+}
+
+.about-sections > section:nth-child(2)::before {
+  background: #f18b6b;
+}
+
+.about-sections > section:nth-child(3)::before {
+  background: #66bcd3;
+}
+
 .pact-overview {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
@@ -242,6 +356,64 @@ button:disabled {
 .pact-detail-main > h1 {
   max-width: 800px;
   overflow-wrap: anywhere;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.page-heading-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  place-items: center;
+  border: 1px solid rgb(32 53 45 / 6%);
+  border-radius: 17px;
+  font-size: 1.55rem;
+  box-shadow: 0 5px 12px rgb(54 65 43 / 8%);
+}
+
+.page-heading--mint .page-heading-icon {
+  background: #d9f4e2;
+}
+
+.page-heading--coral .page-heading-icon {
+  background: #ffe0d8;
+}
+
+.page-heading--sky .page-heading-icon {
+  background: #d9f1f7;
+}
+
+.page-heading--sun .page-heading-icon {
+  background: #ffedbb;
+}
+
+.page-heading--lilac .page-heading-icon {
+  background: #ebe2ff;
+}
+
+.page-heading > div > h1 {
+  margin: 0 !important;
+}
+
+.page-heading-description {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.page-heading-description p {
+  margin: 0;
+}
+
+.page-heading-description p + p {
+  margin-top: 6px;
 }
 
 .meadow {
@@ -671,6 +843,18 @@ button:disabled {
   .pact-overview {
     grid-template-columns: minmax(0, 1fr);
     gap: 24px;
+  }
+
+  .page-heading {
+    gap: 12px;
+  }
+
+  .page-heading-icon {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+    border-radius: 14px;
+    font-size: 1.3rem;
   }
 }
 

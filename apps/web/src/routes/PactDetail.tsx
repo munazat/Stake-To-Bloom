@@ -30,6 +30,7 @@ import {
 } from '../lib/pactDetail.ts'
 import { ProofPrepareError, prepareProof, uploadAndSubmit } from '../lib/proof.ts'
 import { SAMPLE_LABELS, renderSample, sampleSpec, type SampleKind } from '../lib/samples.ts'
+import PageHeading from '../components/PageHeading.tsx'
 
 const VERDICT_STYLE: Record<string, string> = {
   PASS: 'bg-emerald-100 text-emerald-800',
@@ -284,13 +285,19 @@ export default function PactDetailRoute() {
           </p>
         ) : (
           <>
-            <h1 className="mt-3 text-2xl font-extrabold text-emerald-800">{detail.title}</h1>
-            <p className="mt-2 text-base text-slate-600">
-              {formatUsd(detail.stakeCents)} {detail.currency} · {detail.requiredPasses} of{' '}
-              {detail.days} days to pass · {detail.status.replace(/_/g, ' ').toLowerCase()}
-              {detail.isDemo ? ' · demo player' : ''}
-              {detail.isSimulated ? ' · simulated stake (no money moved)' : ''}
-            </p>
+            <PageHeading
+              icon={stage === 'bloom' ? '🌸' : '🌱'}
+              tone={stage === 'bloom' ? 'coral' : 'mint'}
+              title={detail.title}
+              className="mt-3"
+            >
+              <p>
+                {formatUsd(detail.stakeCents)} {detail.currency} · {detail.requiredPasses} of{' '}
+                {detail.days} days to pass · {detail.status.replace(/_/g, ' ').toLowerCase()}
+                {detail.isDemo ? ' · demo player' : ''}
+                {detail.isSimulated ? ' · simulated stake (no money moved)' : ''}
+              </p>
+            </PageHeading>
 
             <div className="pact-overview mt-7">
               <div className="max-w-xs">

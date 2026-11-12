@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { edgeFunctionUrl, supabaseAnonKey } from '../lib/config.ts'
 import { SandboxBanner } from './Landing.tsx'
+import PageHeading from '../components/PageHeading.tsx'
 
 export default function AdminRoute() {
   // Keep this page out of search results; access is still enforced by the server secret.
@@ -44,10 +45,9 @@ export default function AdminRoute() {
     <div className="min-h-screen bg-slate-50 text-slate-800">
       <SandboxBanner />
       <main className="mx-auto max-w-xl px-5 py-10">
-        <h1 className="text-2xl font-bold">Operations</h1>
-        <p className="mt-2 text-base text-slate-600">
-          Restricted maintenance tools. Your secret is used for this session only.
-        </p>
+        <PageHeading icon="🧰" tone="lilac" title="Operations">
+          <p>Restricted maintenance tools. Your secret is used for this session only.</p>
+        </PageHeading>
         <label className="mt-5 block text-sm font-semibold">
           Admin secret
           <input

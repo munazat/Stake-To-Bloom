@@ -8,6 +8,7 @@ import { formatUsd } from '@bloomstake/core'
 import { SandboxBanner } from './Landing.tsx'
 import { isSupabaseConfigured } from '../lib/config.ts'
 import { fetchAuditEvents } from '../lib/audit.ts'
+import PageHeading from '../components/PageHeading.tsx'
 
 export default function Audit() {
   const query = useQuery({
@@ -24,10 +25,9 @@ export default function Audit() {
         <Link to="/garden" className="text-sm font-medium text-emerald-700 hover:underline">
           ← Garden
         </Link>
-        <h1 className="mt-3 text-3xl font-extrabold text-emerald-800">Payment activity</h1>
-        <p className="mt-2 text-base text-slate-600">
-          Verified PayPal events for your pacts. Updates every few seconds.
-        </p>
+        <PageHeading icon="💳" tone="sky" title="Payment activity" className="mt-3">
+          <p>Verified PayPal events for your pacts. Updates every few seconds.</p>
+        </PageHeading>
 
         {!isSupabaseConfigured ? (
           <p
@@ -54,7 +54,7 @@ export default function Audit() {
             aria-label="PayPal events"
           >
             {query.data.map((e) => (
-              <li key={e.id} className="px-4 py-3 text-sm">
+              <li key={e.id} className="audit-event px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-slate-800">{e.eventType}</span>
                   <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">

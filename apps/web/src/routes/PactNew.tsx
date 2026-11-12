@@ -31,6 +31,7 @@ import {
 } from '../lib/api.ts'
 import { isSupabaseConfigured } from '../lib/config.ts'
 import { SandboxBanner, SiteFooter } from './Landing.tsx'
+import PageHeading from '../components/PageHeading.tsx'
 
 type GoalChoice = TemplateGoal | 'custom'
 
@@ -38,26 +39,31 @@ const STEP_LABELS = ['Goal', 'Terms', 'Your rules'] as const
 
 const GOAL_TILES: ReadonlyArray<{
   key: TemplateGoal
+  emoji: string
   label: string
   blurb: string
 }> = [
   {
     key: 'steps',
+    emoji: '👟',
     label: 'Steps',
     blurb: 'A daily step count at or above your target.',
   },
   {
     key: 'water',
+    emoji: '💧',
     label: 'Water',
     blurb: 'A daily volume of water at or above your target.',
   },
   {
     key: 'meal',
+    emoji: '🥗',
     label: 'Healthy meal',
     blurb: 'A photo of a balanced meal, with the daily code in frame.',
   },
   {
     key: 'workout',
+    emoji: '🏋️',
     label: 'Workout',
     blurb: 'A photo of an active session at or above your target minutes.',
   },
@@ -196,12 +202,9 @@ export default function PactNew() {
           ← Back
         </Link>
 
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-emerald-800">
-          Create a pact
-        </h1>
-        <p className="mt-2 text-base text-slate-600">
-          Set your goal and stake, then review the exact rule before locking your pact.
-        </p>
+        <PageHeading icon="🎯" tone="coral" title="Create a pact" className="mt-3">
+          <p>Set your goal and stake, then review the exact rule before locking your pact.</p>
+        </PageHeading>
 
         <ol
           className="wizard-progress mt-8 flex gap-0 border-b border-slate-200"
@@ -284,7 +287,7 @@ export default function PactNew() {
         ) : step === 0 ? (
           <section className="mt-6">
             <div className="grid gap-3 sm:grid-cols-2">
-              {GOAL_TILES.map((tile, index) => (
+              {GOAL_TILES.map((tile) => (
                 <button
                   key={tile.key}
                   type="button"
@@ -296,8 +299,8 @@ export default function PactNew() {
                       : 'border-slate-200 bg-white hover:border-emerald-300'
                   }`}
                 >
-                  <span aria-hidden className="goal-choice-index">
-                    {String(index + 1).padStart(2, '0')}
+                  <span aria-hidden className={`goal-choice-icon goal-choice-icon--${tile.key}`}>
+                    {tile.emoji}
                   </span>
                   <span className="mt-3 block text-lg font-semibold text-slate-800">
                     {tile.label}
@@ -311,16 +314,21 @@ export default function PactNew() {
               type="button"
               onClick={() => pickGoal('custom')}
               aria-pressed={isCustom}
-              className={`mt-3 w-full rounded-xl border p-4 text-left transition ${
+              className={`custom-goal-choice mt-3 w-full rounded-xl border p-4 text-left transition ${
                 isCustom
                   ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200'
                   : 'border-dashed border-slate-300 bg-slate-50 hover:border-emerald-300'
               }`}
             >
-              <span className="block font-semibold text-slate-800">Custom goal</span>
-              <span className="mt-1 block text-sm text-slate-500">
-                Describe any habit in your own words. The AI proposes the checks; you read the
-                contract and confirm it.
+              <span className="goal-choice-icon goal-choice-icon--custom" aria-hidden="true">
+                ✨
+              </span>
+              <span>
+                <span className="block font-semibold text-slate-800">Custom goal</span>
+                <span className="mt-1 block text-sm text-slate-500">
+                  Describe any habit in your own words. The AI proposes the checks; you read the
+                  contract and confirm it.
+                </span>
               </span>
             </button>
 

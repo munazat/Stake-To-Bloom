@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { startDemo } from '../lib/api.ts'
 import { isSupabaseConfigured } from '../lib/config.ts'
 import { SandboxBanner } from './Landing.tsx'
+import PageHeading from '../components/PageHeading.tsx'
 
 export default function DemoRoute() {
   const navigate = useNavigate()
@@ -17,21 +18,35 @@ export default function DemoRoute() {
         <Link to="/" className="text-sm text-emerald-800 hover:underline">
           ← BloomStake
         </Link>
-        <h1 className="mt-5 text-3xl font-extrabold text-emerald-900">See a pact in action</h1>
-        <p className="mt-3 text-base text-slate-600">
-          Follow a sample wellness pact from proof to garden. Stakes are simulated.
-        </p>
-        <ol className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
+        <PageHeading icon="🎈" tone="lilac" title="See a pact in action" className="mt-5">
+          <p>Follow a sample wellness pact from proof to garden. Stakes are simulated.</p>
+        </PageHeading>
+        <ol className="demo-steps mt-8 divide-y divide-slate-200 border-y border-slate-200">
           <li className="py-4 first:pt-0">
-            <strong>1. Start a sample pool.</strong> See three simulated participants and their
-            pacts.
+            <span className="demo-step-icon demo-step-icon--mint" aria-hidden="true">
+              🌱
+            </span>
+            <span>
+              <strong>1. Start a sample pool.</strong> See three simulated participants and their
+              pacts.
+            </span>
           </li>
           <li className="py-4">
-            <strong>2. Submit one proof.</strong> Use your own image or a generated sample.
+            <span className="demo-step-icon demo-step-icon--coral" aria-hidden="true">
+              📷
+            </span>
+            <span>
+              <strong>2. Submit one proof.</strong> Use your own image or a generated sample.
+            </span>
           </li>
           <li className="py-4 last:pb-0">
-            <strong>3. Advance the week.</strong> Simulated days show how the garden changes without
-            extra AI or payment calls.
+            <span className="demo-step-icon demo-step-icon--sky" aria-hidden="true">
+              ⏩
+            </span>
+            <span>
+              <strong>3. Advance the week.</strong> Simulated days show how the garden changes
+              without extra AI or payment calls.
+            </span>
           </li>
         </ol>
         <p className="mt-4 text-sm text-slate-500">
