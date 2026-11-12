@@ -109,7 +109,7 @@ export function plantLook(stage: GardenStage, vitality: number): PlantLook {
     petalCount: blooming ? 8 : 5,
     stemColor: hslHex(wilting ? 60 : 120, wilting ? 0.35 : 0.4, wilting ? 0.36 : 0.32),
     leafColor: hslHex(wilting ? 48 : 122, wilting ? 0.45 : 0.5, wilting ? 0.45 : 0.4),
-    petalColor: hslHex(wilting ? 45 : 330, wilting ? 0.4 : 0.72, wilting ? 0.55 : 0.72),
+    petalColor: hslHex(wilting ? 45 : 43, wilting ? 0.4 : 0.92, 0.55),
   }
 }
 
