@@ -69,12 +69,24 @@ export function assertAllowedOrigin(request: Request): void {
   }
 }
 
+/** Compare two secrets without leaking, through timing, how much of the guess matched. */
+export function secretMatches(supplied: string, expected: string): boolean {
+  if (!expected) return false
+  const left = new TextEncoder().encode(supplied)
+  const right = new TextEncoder().encode(expected)
+  let diff = left.length ^ right.length
+  for (let i = 0; i < right.length; i++) diff |= (left[i] ?? 0) ^ right[i]
+  return diff === 0
+}
+
 /** Wrap a handler with preflight handling, origin policy, CORS and error mapping. */
 export function withCors(handler: Handler): Handler {
   return async (request: Request) => {
     const cors = corsHeaders()
     if (isPreflight(request)) {
-      return new Response('ok', { status: 204, headers: cors })
+      // 204 must have a null body: a body makes the Response constructor throw, which
+      // the hosted runtime turns into a 500 and the browser then blocks every call.
+      return new Response(null, { status: 204, headers: cors })
     }
     let response: Response
     try {
