@@ -16,7 +16,7 @@ This runbook separates repeatable local checks from account actions that require
 
 ## Owner setup still required
 
-- Wire hosted Supabase using the owner’s database password and anon/publishable key. Keep the service-role key private.
+- Wire hosted Supabase using the project's database password and anon/publishable key. Keep the service-role key private.
 - Set function secrets from `.env.example` in the hosted Supabase project. `ADMIN_SECRET`, `CRON_SECRET`, and `RATE_LIMIT_SALT` must be generated privately; never paste them into chat or commit them.
 - Verify PayPal Sandbox Payouts is enabled, create/confirm `charity-demo` and buyer accounts, register the hosted webhook, and set `PAYPAL_WEBHOOK_ID`. Live acceptance requires the owner’s explicit decision to run sandbox calls.
 - Add GitHub Actions secrets `SUPABASE_PROJECT_URL` and `CRON_SECRET`. `keepalive.yml` deliberately reports a no-op when these are absent; a green no-op is not live acceptance.

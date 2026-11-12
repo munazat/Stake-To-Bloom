@@ -85,7 +85,7 @@ npm run test:functions
 supabase test db
 ```
 
-The demo needs Supabase for guest sessions, but its four stakes are simulated and it makes no PayPal calls. Mia, Omar, and Zed have deterministic outcomes; simulated days call neither Gemini nor PayPal. The owner's first proof still uses the configured proof referee. `/admin` exposes health and retry controls only when an operator enters the secret at runtime; the secret is never part of the frontend build.
+The demo needs Supabase for guest sessions, but its four stakes are simulated and it makes no PayPal calls. Mia, Omar, and Zed have deterministic outcomes; simulated days call neither Gemini nor PayPal. The player's first proof still uses the configured proof referee. `/admin` exposes health and retry controls only when an operator enters the secret at runtime; the secret is never part of the frontend build.
 
 The root `.env.example` documents variable names. Web `VITE_*` values are public build-time settings. PayPal/Gemini/admin/cron secrets belong in the local Supabase function environment or Supabase secrets, never in the repository. `VITE_PAYMENTS_ADAPTER=mock` and `PAYMENTS_ADAPTER=mock` are local-only; production builds/functions reject mock payments on hosted projects.
 
@@ -102,13 +102,13 @@ supabase test db
 
 ## Demo
 
-Open `/demo`, start the guided demo, and open the owner pact in the garden. Submit the browser-generated sample proof first. Then use the fast-forward control: Mia’s remaining days pass; Omar’s and Zed’s miss. The simulated days are marked in the timeline and make no AI or money call. Clearing site data loses this guest demo garden.
+Open `/demo`, start the guided demo, and open your pact in the garden. Submit the browser-generated sample proof first. Then use the fast-forward control: Mia’s remaining days pass; Omar’s and Zed’s miss. The simulated days are marked in the timeline and make no AI or money call. Clearing site data loses this guest demo garden.
 
 The garden respects `prefers-reduced-motion`, supports a low-cost `?lite=1` renderer, and falls back to accessible SVG when WebGL is unavailable. Validate the target browsers and devices against the checklist before calling the hosted app accepted.
 
 ## Deployment status
 
-Hosted Supabase project reference: `jcooxuagqgapjfedhdpz` (created, not yet wired from this workspace). Deployment is intentionally pending until the owner supplies the hosted project configuration privately and the PayPal sandbox checklist is complete. See [`docs/phase10-runbook.md`](docs/phase10-runbook.md) for the exact remaining steps. Never put private keys, passwords, buyer credentials, or webhook secrets in this README or Devpost text.
+Live app: https://stake-to-bloom.munaxa-tm.workers.dev (Cloudflare Workers static assets). Backend: a hosted Supabase project (Postgres, Auth, Storage, Edge Functions). Everything runs against the PayPal **sandbox**; no real money moves. Live sandbox checkout, payout and refund acceptance is recorded in [`docs/phase10-runbook.md`](docs/phase10-runbook.md). Never put private keys, passwords, buyer credentials, or webhook secrets in the repository.
 
 The `keepalive.yml` workflow calls the hourly maintenance endpoint and daily health check after `SUPABASE_PROJECT_URL` and `CRON_SECRET` are configured in GitHub Actions. Without both secrets it reports a visible skip; that no-op does not count as live acceptance. The Phase 10 submission checklist and 2:45 recording outline are in `docs/`.
 
