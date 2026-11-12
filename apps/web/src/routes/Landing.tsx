@@ -14,7 +14,15 @@ function SiteHeader() {
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="site-header-inner mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3">
-        <Link to="/" className="site-brand flex items-center font-bold text-emerald-800">
+        <Link to="/" className="site-brand flex items-center gap-2 font-bold text-emerald-800">
+          <span className="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 28 28" fill="none">
+              <path d="M14 22V13" stroke="#1c7551" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M14 15C14 9 9 7 5 8c.3 4.8 3.7 7.5 9 7Z" fill="#35a970" />
+              <path d="M14 12c0-5.5 4.5-7.5 9-6.5-.2 4.5-3.4 7-9 7Z" fill="#74c96d" />
+              <circle cx="14" cy="22" r="2" fill="#e97c70" />
+            </svg>
+          </span>
           BloomStake
         </Link>
         <nav aria-label="Main" className="site-nav flex items-center gap-1">
@@ -79,7 +87,9 @@ export default function Landing() {
             <p className="home-eyebrow font-bold uppercase tracking-widest">
               A little skin in the game
             </p>
-            <h1 className="home-title font-extrabold text-emerald-900">Make your habits bloom.</h1>
+            <h1 className="home-title font-extrabold text-emerald-900">
+              Make your habits <span>bloom.</span>
+            </h1>
             <p className="home-description text-slate-600">
               A seven-day wellness pact: set a goal, put a small stake behind it, and show your
               progress day by day.
@@ -101,10 +111,19 @@ export default function Landing() {
             className="home-garden meadow m-0 border border-slate-200 p-5"
             aria-label="A plant growing over seven days"
           >
-            <p className="home-garden-label">One week of showing up</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="home-garden-topline">
+              <p className="home-garden-label">One week of showing up</p>
+              <span className="home-garden-tag">7-day pact</span>
+            </div>
+            <span className="garden-spark garden-spark-one" aria-hidden="true">
+              ✦
+            </span>
+            <span className="garden-spark garden-spark-two" aria-hidden="true">
+              ✦
+            </span>
+            <div className="home-garden-stages grid grid-cols-4">
               {STAGES.map((item) => (
-                <div key={item.stage} className="text-center">
+                <div key={item.stage} className="home-stage-cell text-center">
                   <div className="aspect-[3/4]">
                     <PlantSVG
                       stage={item.stage}
@@ -112,9 +131,17 @@ export default function Landing() {
                       title={`${item.label}: ${item.stage}`}
                     />
                   </div>
-                  <figcaption>{item.label}</figcaption>
+                  <span className="home-stage-label">{item.label}</span>
                 </div>
               ))}
+            </div>
+            <div className="home-garden-footer">
+              <span>Small steps, visible growth</span>
+              <span className="garden-week-dots" aria-hidden="true">
+                {Array.from({ length: 7 }, (_, index) => (
+                  <i key={index} />
+                ))}
+              </span>
             </div>
           </figure>
         </section>
