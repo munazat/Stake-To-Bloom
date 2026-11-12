@@ -11,10 +11,10 @@ describe('Landing', () => {
       </MemoryRouter>,
     )
     expect(
-      screen.getByRole('heading', { level: 1, name: /stake it\. prove it\. grow it\./i }),
+      screen.getByRole('heading', { level: 1, name: /make your habits bloom/i }),
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /start a pact/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: /how it works/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: /how bloomstake works/i })).toBeInTheDocument()
   })
 
   it('shows the test-mode indicator', () => {
@@ -23,6 +23,6 @@ describe('Landing', () => {
         <SandboxBanner />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('status')).toHaveTextContent(/Test mode/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/PayPal sandbox/i)
   })
 })

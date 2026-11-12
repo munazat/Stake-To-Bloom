@@ -70,6 +70,6 @@ describe('PactNew wizard', () => {
   it('warns that nothing can be saved until Supabase is configured', () => {
     renderWizard()
     // Tests run without VITE_SUPABASE_*, which is the same state as a fresh clone.
-    expect(screen.getByRole('alert')).toHaveTextContent(/Supabase is not configured/i)
+    expect(screen.getByRole('alert')).toHaveTextContent(/Connect Supabase/i)
   })
 })
