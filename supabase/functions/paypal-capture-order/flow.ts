@@ -53,7 +53,11 @@ export async function captureFlow(
     order = await deps.paypal.getOrder(orderId)
   } else {
     try {
-      order = await deps.paypal.captureOrder(orderId)
+      await deps.paypal.captureOrder(orderId)
+      // Validate against the full order, exactly as the webhook does. PayPal's capture
+      // response can omit parts of the payee that the order carries, which made a
+      // genuine payment look like a payee mismatch.
+      order = await deps.paypal.getOrder(orderId)
     } catch (err) {
       if (err instanceof PaypalError && err.issue === 'ORDER_ALREADY_CAPTURED') {
         order = await deps.paypal.getOrder(orderId)
