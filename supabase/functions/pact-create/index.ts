@@ -96,6 +96,13 @@ const handler = async (request: Request): Promise<Response> => {
     throw new HttpError(500, 'bad_rule_hash', 'Computed rule hash is not 64 lowercase hex chars.')
   }
 
+  // A session created before the database existed (or a trigger that missed) has no
+  // profile row, and the pact insert would then fail its foreign key. The caller is
+  // already authenticated, so create the profile now; an existing one is left alone.
+  await admin
+    .from('profiles')
+    .upsert({ user_id: userId, is_guest: true }, { onConflict: 'user_id', ignoreDuplicates: true })
+
   const { data: row, error } = await admin
     .from('pacts')
     .insert({
