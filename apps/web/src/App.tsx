@@ -1,6 +1,7 @@
 import { Suspense, lazy, type ReactNode } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Landing from './routes/Landing.tsx'
+import NotFound from './routes/NotFound.tsx'
 
 // The wizard pulls in @bloomstake/core (schemas, templates, canonical JSON) and
 // zod with it. Splitting the route keeps that out of the landing page's bundle —
@@ -88,6 +89,7 @@ export default function App() {
           </Deferred>
         }
       />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }
