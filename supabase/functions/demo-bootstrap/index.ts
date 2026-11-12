@@ -8,6 +8,10 @@ const handler = async (request: Request) => {
   assertMethod(request, 'POST')
   const admin = serviceClient()
   const userId = await requireUserId(request, admin)
+  // Recreate a missing guest profile (see pact-create) so the demo pacts can be saved.
+  await admin
+    .from('profiles')
+    .upsert({ user_id: userId, is_guest: true }, { onConflict: 'user_id', ignoreDuplicates: true })
   await enforceCounter(admin, { scope: 'USER', value: userId, limit: 3 })
   await enforceCounter(admin, { scope: 'IP', value: requestIp(request), limit: 10 })
 
