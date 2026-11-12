@@ -17,12 +17,12 @@ describe('Landing', () => {
     expect(screen.getByRole('heading', { level: 2, name: /how it works/i })).toBeInTheDocument()
   })
 
-  it('always shows the sandbox banner', () => {
+  it('shows the test-mode indicator', () => {
     render(
       <MemoryRouter>
         <SandboxBanner />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('status')).toHaveTextContent(/Sandbox Mode — No Real Money/i)
+    expect(screen.getByRole('status')).toHaveTextContent(/Test mode/i)
   })
 })

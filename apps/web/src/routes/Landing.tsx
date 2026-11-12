@@ -1,19 +1,9 @@
 import { Link, NavLink } from 'react-router-dom'
 import PlantSVG from '../garden/PlantSVG.tsx'
 
-/** The practice-mode notice, shown on every screen. */
+/** The shared page header. A small test-mode pill keeps the payment mode honest without shouting. */
 export function SandboxBanner() {
-  return (
-    <>
-      <div
-        role="status"
-        className="w-full bg-amber-100 px-4 py-1.5 text-center text-xs font-semibold tracking-wide text-amber-900"
-      >
-        Sandbox Mode — No Real Money
-      </div>
-      <SiteHeader />
-    </>
-  )
+  return <SiteHeader />
 }
 
 function SiteHeader() {
@@ -31,6 +21,13 @@ function SiteHeader() {
           <span aria-hidden>🌱</span> BloomStake
         </Link>
         <nav aria-label="Main" className="flex items-center gap-1">
+          <span
+            role="status"
+            title="Payments run in PayPal's test environment. No real money moves."
+            className="mr-1 hidden rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900 sm:inline"
+          >
+            Test mode
+          </span>
           <NavLink to="/demo" className={link}>
             Demo
           </NavLink>
@@ -50,12 +47,10 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-slate-200/70 px-6 py-6 text-center text-xs text-slate-500">
       <p>
-        BloomStake runs on the PayPal Sandbox with test money only. Built for the PayPal AI
-        Hackathon ·{' '}
+        © BloomStake ·{' '}
         <Link to="/about" className="underline hover:text-emerald-800">
           How it works
-        </Link>{' '}
-        · MIT License
+        </Link>
       </p>
     </footer>
   )
@@ -129,7 +124,7 @@ export default function Landing() {
               </Link>
             </div>
             <p className="mt-4 text-sm text-slate-500">
-              No sign-up. Everything uses PayPal test money, so nothing real is ever charged.
+              No sign-up needed. Payments run in test mode, so nothing real is ever charged.
             </p>
           </div>
 
