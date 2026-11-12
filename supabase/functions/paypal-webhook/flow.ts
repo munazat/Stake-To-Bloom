@@ -22,6 +22,7 @@ import {
   type FundingDb,
   type PayeeExpectation,
 } from '../_shared/funding.ts'
+import { refundLateCapture } from '../_shared/lateCapture.ts'
 import type { PaypalClient } from '../_shared/paypal.ts'
 
 export const MAX_WEBHOOK_BYTES = 100 * 1024
@@ -172,7 +173,15 @@ export async function handleWebhook(deps: WebhookDeps, request: Request): Promis
       if (check.kind === 'ok') {
         const result = await fundPact(deps.funding, pact, check.capture, deps.now())
         detail.funded = result.funded
-        if (!result.funded) detail.note = `pact is ${result.status}`
+        if (!result.funded) {
+          detail.note = `pact is ${result.status}`
+          detail.late_capture = await refundLateCapture(deps, {
+            pactId: pact.id,
+            pactStatus: result.status,
+            captureId: check.capture.captureId,
+            amountCents: check.capture.amountCents,
+          })
+        }
       } else if (check.kind === 'mismatch') {
         status = 'REJECTED'
         detail.reason = check.reason

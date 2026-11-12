@@ -8,6 +8,7 @@
 import { HttpError } from '../_shared/http.ts'
 import type { EventSink } from '../_shared/events.ts'
 import { fundPact, validateCapture, type FundingDb, type PayeeExpectation } from '../_shared/funding.ts'
+import { refundLateCapture } from '../_shared/lateCapture.ts'
 import { PaypalError, type PaypalClient, type PaypalOrder } from '../_shared/paypal.ts'
 
 export interface CapturePact {
@@ -85,6 +86,14 @@ export async function captureFlow(
 
   const result = await fundPact(deps.funding, pact, check.capture, deps.now())
   if (!result.funded) {
+    const late = await refundLateCapture(deps, {
+      pactId: pact.id,
+      pactStatus: result.status,
+      captureId: check.capture.captureId,
+      amountCents: check.capture.amountCents,
+    })
+    if (late === 'refunded')
+      throw new HttpError(409, 'late_payment_refunded', 'The pact expired before the payment finished. It was refunded in full.')
     throw new HttpError(409, 'not_awaiting_stake', 'This pact can no longer be funded.')
   }
   await deps.events.record({
