@@ -12,7 +12,7 @@ import PlantSVG from './PlantSVG.tsx'
 import { detectWebGL, isLiteMode, prefersReducedMotion } from './capabilities.ts'
 
 /** The illustrated fields. One is chosen per plot from its title, so a garden has variety. */
-const FIELDS = ['garden', 'main-garden', 'cherry-blossom', 'greenhouse'] as const
+const FIELDS = ['main-garden', 'savanna', 'beach', 'fruit-backyard'] as const
 
 function fieldFor(title: string): string {
   let hash = 0
