@@ -1,10 +1,10 @@
 import { serviceClient } from '../_shared/auth.ts'
-import { assertMethod, HttpError, json, withCors } from '../_shared/http.ts'
+import { assertMethod, HttpError, json, secretMatches, withCors } from '../_shared/http.ts'
 
 const handler = async (request: Request) => {
   assertMethod(request, 'POST')
   const secret = Deno.env.get('CRON_SECRET') ?? ''
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`)
+  if (!secret || !secretMatches(request.headers.get('authorization') ?? '', `Bearer ${secret}`))
     throw new HttpError(401, 'unauthorized', 'A valid cron secret is required.')
   const now = new Date()
   // Preserve all guest data through the stated submission-review window.

@@ -1,12 +1,12 @@
 import { serviceClient } from '../_shared/auth.ts'
-import { assertMethod, HttpError, json, withCors } from '../_shared/http.ts'
+import { assertMethod, HttpError, json, secretMatches, withCors } from '../_shared/http.ts'
 import { paypalClientFromEnv } from '../_shared/paypal.ts'
 
 const paypal = paypalClientFromEnv()
 const handler = async (request: Request) => {
   assertMethod(request, 'POST')
-  const secret = Deno.env.get('CRON_SECRET')
-  if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`)
+  const secret = Deno.env.get('CRON_SECRET') ?? ''
+  if (!secretMatches(request.headers.get('authorization') ?? '', `Bearer ${secret}`) || !secret)
     throw new HttpError(401, 'unauthorized', 'A valid cron secret is required.')
   const admin = serviceClient()
   const { data: rows, error } = await admin

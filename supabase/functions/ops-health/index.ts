@@ -1,5 +1,5 @@
 import { serviceClient } from '../_shared/auth.ts'
-import { assertMethod, HttpError, json, withCors } from '../_shared/http.ts'
+import { assertMethod, HttpError, json, secretMatches, withCors } from '../_shared/http.ts'
 import { assertSandbox, looksHosted } from '../_shared/paypal.ts'
 
 const handler = async (request: Request) => {
@@ -7,7 +7,7 @@ const handler = async (request: Request) => {
   const token = (request.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
   const cron = Deno.env.get('CRON_SECRET') ?? ''
   const adminSecret = Deno.env.get('ADMIN_SECRET') ?? ''
-  if (!token || !(token === cron || token === adminSecret))
+  if (!token || !(secretMatches(token, cron) || secretMatches(token, adminSecret)))
     throw new HttpError(401, 'unauthorized', 'A valid operations secret is required.')
   const admin = serviceClient()
   const hosted = looksHosted(Deno.env.get('SUPABASE_URL'))

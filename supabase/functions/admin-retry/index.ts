@@ -1,5 +1,5 @@
 import { serviceClient } from '../_shared/auth.ts'
-import { assertMethod, HttpError, json, readJsonBody, withCors } from '../_shared/http.ts'
+import { assertMethod, HttpError, json, readJsonBody, secretMatches, withCors } from '../_shared/http.ts'
 import { z } from 'zod'
 
 const Body = z.discriminatedUnion('action', [
@@ -10,7 +10,7 @@ const handler = async (request: Request) => {
   assertMethod(request, 'POST')
   const expected = Deno.env.get('ADMIN_SECRET') ?? ''
   const supplied = (request.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
-  if (!expected || supplied !== expected)
+  if (!secretMatches(supplied, expected))
     throw new HttpError(401, 'unauthorized', 'A valid admin secret is required.')
   const body = Body.parse(await readJsonBody(request))
   const admin = serviceClient()

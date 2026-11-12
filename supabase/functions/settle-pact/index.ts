@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { requireUserId, serviceClient } from '../_shared/auth.ts'
-import { assertMethod, json, readJsonBody, withCors, HttpError } from '../_shared/http.ts'
+import { assertMethod, json, readJsonBody, secretMatches, withCors, HttpError } from '../_shared/http.ts'
 import { assertPaymentsEnabled, paypalClientFromEnv } from '../_shared/paypal.ts'
 import { ruleHash } from '../_shared/core/index.ts'
 import { settlePact } from './flow.ts'
@@ -14,9 +14,9 @@ const handler = async (request: Request) => {
   const adminSecret = Deno.env.get('ADMIN_SECRET')
   const auth = request.headers.get('authorization') ?? ''
   const caller =
-    cronSecret && auth === `Bearer ${cronSecret}`
+    cronSecret && secretMatches(auth, `Bearer ${cronSecret}`)
       ? 'cron'
-      : adminSecret && auth === `Bearer ${adminSecret}`
+      : adminSecret && secretMatches(auth, `Bearer ${adminSecret}`)
         ? 'admin'
         : null
   const userId = caller ? null : await requireUserId(request, admin)
